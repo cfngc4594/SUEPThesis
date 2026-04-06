@@ -1,7 +1,7 @@
 {
   "latex-workshop.latex.autoBuild.run": "never", 
   "latex-workshop.latex.recipe.default": "lastUsed",
-  "latex-workshop.latex.build.forceRecipeUsage": true,
+  "latex-workshop.latex.build.enableMagicComments": false,
   "latex-workshop.intellisense.package.enabled": true,
   "latex-workshop.intellisense.unimathsymbols.enabled": true,
   "latex-workshop.showContextMenu": true,
