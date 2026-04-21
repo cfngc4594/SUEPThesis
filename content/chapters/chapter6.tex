@@ -1,81 +1,199 @@
-%%
-% The SUEPThesis Template for Bachelor Graduation Thesis
-%
-% 上海电力大学毕业设计（论文）中英文摘要 —— 使用 XeLaTeX 编译
-%
-% Copyright 2020-2023 SUEPaper
-%
-% This work may be distributed and/or modified under the
-% conditions of the LaTeX Project Public License, either version 1.3
-% of this license or (at your option) any later version.
-% The latest version of this license is in
-%   http://www.latex-project.org/lppl.txt
-% and version 1.3 or later is part of all distributions of LaTeX
-% version 2005/12/01 or later.
-%
-% This work has the LPPL maintenance status `maintained'.
-%
-% The Current Maintainer of this work is Haiwen Zhang.
-%%
+\chapter{系统测试与结果分析}
 
-\chapter{不同情形WPCR生产和存储模型的综合分析}
+\section{测试目标与测试环境}
 
-\section{不同情形的WPCR生产和存储总成本比较}
+系统测试的主要目标是验证平台在典型教学场景下的功能完整性、判题正确性、运行稳定性以及 AI 辅助反馈的可用性。由于本文实现的是面向程序设计教学的在线评测平台，因此测试重点并不在于极端大规模并发压测，而在于核心链路是否可靠，即题目是否可正常读取、代码是否可提交、判题状态是否准确、测试结果是否可追踪以及 AI 辅助反馈是否与实际提交情形相匹配。
 
-通过前面四个模型优化结果可知，连续多周生产统筹规划模型相较于不允许缺货的WPCR生产和存储模型增加组装迟滞，
-由图表可以看出其费用大大升高，对研究组装分配计划具有重要现实意义。
-考虑检修的生产和存储模型和WPCR不确定生产和存储模型在连续多周生产统筹规划模型的基础上展开，
-分别得出增设检修日期和需求未知条件下的最小费用，经对比分析，可对复杂生产中组装计划的调度具有指导意义。
+测试环境应至少记录操作系统、Node.js 版本、数据库版本、Docker 运行环境、测试所用浏览器以及 AI 服务接入方式等信息。为保证后续答辩和论文一致性，建议在系统定版后补充真实环境配置和关键版本号。
 
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=0.7\linewidth]{ch6-1.png}
-    \caption{各问题优化结果比较}
-    \label{f.ch6-1}
+\begingroup
+\small
+\setlength{\LTleft}{0pt}
+\setlength{\LTright}{0pt}
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{P{0.18\textwidth}P{0.72\textwidth}}
+\caption{测试环境配置表}\\
+\toprule
+\textbf{项目} & \textbf{配置} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{项目} & \textbf{配置} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+操作系统 & macOS 26.2 \\
+Node.js 版本 & v25.8.1 \\
+npm 版本 & 11.11.0 \\
+Next.js 版本 & 15.1.7 \\
+数据库 & PostgreSQL \\
+ORM / Prisma 版本 & Prisma 6.6.0 \\
+容器环境 & Docker 28.3.3 \\
+支持语言 & C、C++ \\
+AI 服务 & DeepSeek（通过 @ai-sdk/deepseek 接入） \\
+浏览器 & [TODO] 按最终演示时实际使用的浏览器填写，例如 Chrome 或 Edge \\
+\bottomrule
+\end{longtable}
+\endgroup
+
+\section{功能测试设计}
+
+功能测试主要围绕用户登录、题目浏览、题目详情展示、模板加载、代码提交、提交记录查看、判题结果展示和 AI 辅助反馈等核心功能展开。测试方式可采用黑盒测试思路，对输入操作、系统响应和最终页面结果进行逐项核验。对于题库管理相关页面，还应测试题目内容是否能正确读取、测试数据是否可关联以及不同语言模板是否能正常加载。
+
+在论文撰写中，功能测试建议以“测试项—输入或操作—预期结果—实际结果”形式整理成表格。这样既便于答辩时展示，也便于后续补充真实测试结果。
+
+\begingroup
+\small
+\setlength{\LTleft}{0pt}
+\setlength{\LTright}{0pt}
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{P{0.07\textwidth}P{0.11\textwidth}P{0.15\textwidth}P{0.14\textwidth}P{0.14\textwidth}P{0.13\textwidth}P{0.09\textwidth}}
+\caption{功能测试用例与结果}\\
+\toprule
+\textbf{编号} & \textbf{测试项} & \textbf{前置条件} & \textbf{测试步骤} & \textbf{预期结果} & \textbf{实际结果} & \textbf{备注} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{编号} & \textbf{测试项} & \textbf{前置条件} & \textbf{测试步骤} & \textbf{预期结果} & \textbf{实际结果} & \textbf{备注} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+F-01 & 用户注册/登录 & 系统正常运行，数据库连接正常 & 输入正确账号密码并完成登录 & 成功进入系统首页或题目集页面 & [TODO] 按最终演示结果填写，建议写“通过”并附截图编号 & 可结合登录后首页或题目集页面截图说明 \\
+F-02 & 题目列表加载 & 系统中已存在已发布题目 & 打开 \path{/problemset} 页面 & 正常显示题号、标题、难度等信息 & [TODO] 按实际访问结果填写 & 可与题目详情截图形成前后衔接 \\
+F-03 & 题目详情展示 & 题目“1000 两数之和”已存在 & 点击题目进入详情页 & 正常显示题面、时限、内存限制与模板代码 & [TODO] 按实际页面展示结果填写 & 建议对应图5-4 \\
+F-04 & 模板代码加载 & 题目已配置 C / C++ 模板 & 进入题目页并切换语言 & 自动加载对应语言模板代码 & [TODO] 按语言切换结果填写 & 可说明系统支持多语言模板 \\
+F-05 & 代码提交 & 用户已登录且题目可访问 & 输入代码并点击提交 & 生成一条新的提交记录并进入判题流程 & [TODO] 按实际提交结果填写 & 建议对应图5-5 \\
+F-06 & 提交记录查看 & 至少已完成一次代码提交 & 打开提交记录面板或提交详情面板 & 可查看提交时间、状态与部分详情信息 & [TODO] 按实际展示结果填写 & 建议对应图5-6 \\
+F-07 & AI 辅助反馈展示 & 提交已触发 AI 分析且分析完成 & 打开 AI 面板或提交详情中的分析区域 & 可查看复杂度、评分和反馈文本 & [TODO] 待 AI 分析完成后填写 & 建议对应图5-7或图6-1 \\
+F-08 & 题库管理页访问 & 管理员账号可正常登录 & 访问 \path{/dashboard/usermanagement/problem} 页面 & 题目管理列表可正常展示 & [TODO] 按管理员侧实际访问结果填写 & 建议对应图5-3 \\
+\bottomrule
+\end{longtable}
+\endgroup
+
+\section{判题正确性测试设计}
+
+判题正确性测试是本系统测试中的核心部分，应重点验证平台对不同提交结果类型的识别是否准确。建议至少选择若干代表性题目，并分别构造正确程序、编译错误程序、答案错误程序、运行错误程序、时间超限程序以及内存超限或异常退出程序，对系统返回状态进行核对。若系统支持裁剪空白字符对比，还需验证裁剪配置对结果判定的影响。
+
+这部分测试的关键不在于题目数量多，而在于状态覆盖全、过程可复现、结果可解释。对于每一类错误结果，论文中最好都保留一个典型样例，以增强测试章的真实性。
+
+\begingroup
+\small
+\setlength{\LTleft}{0pt}
+\setlength{\LTright}{0pt}
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{P{0.07\textwidth}P{0.10\textwidth}P{0.17\textwidth}P{0.10\textwidth}P{0.11\textwidth}P{0.09\textwidth}P{0.16\textwidth}}
+\caption{判题正确性测试结果}\\
+\toprule
+\textbf{编号} & \textbf{测试类型} & \textbf{输入代码特征} & \textbf{预期状态} & \textbf{实际状态} & \textbf{是否通过} & \textbf{备注} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{编号} & \textbf{测试类型} & \textbf{输入代码特征} & \textbf{预期状态} & \textbf{实际状态} & \textbf{是否通过} & \textbf{备注} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+J-01 & 正确程序 & 可通过全部测试用例 & AC & [TODO] 运行附录D中的 AC 样例后填写 & [TODO] 运行后填写 & 建议保留一条标准 AC 结果作为核心证据 \\
+J-02 & 编译错误程序 & 存在缺少分号等语法错误 & CE & [TODO] 运行附录D中的 CE 样例后填写 & [TODO] 运行后填写 & 可用于展示编译日志与语法错误识别能力 \\
+J-03 & 答案错误程序 & 可编译运行但输出与标准答案不一致 & WA & [TODO] 运行附录D中的 WA 样例后填写 & [TODO] 运行后填写 & 可用于说明系统基于标准输出进行判定 \\
+J-04 & 运行错误程序 & 程序运行过程中异常退出 & RE & [TODO] 运行附录D中的 RE 样例后填写 & [TODO] 运行后填写 & 建议使用 abort() 样例以提高复现稳定性 \\
+J-05 & 时间超限程序 & 程序进入死循环或长期无响应 & TLE & [TODO] 运行附录D中的 TLE 样例后填写 & [TODO] 运行后填写 & 用于验证时间限制控制是否生效 \\
+\bottomrule
+\end{longtable}
+\endgroup
+
+\begingroup
+\small
+\setlength{\LTleft}{0pt}
+\setlength{\LTright}{0pt}
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{P{0.07\textwidth}P{0.11\textwidth}P{0.18\textwidth}P{0.20\textwidth}P{0.25\textwidth}}
+\caption{不同错误类型样例与系统返回状态}\\
+\toprule
+\textbf{编号} & \textbf{错误类型} & \textbf{构造方式} & \textbf{页面表现} & \textbf{论文中可用说明} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{编号} & \textbf{错误类型} & \textbf{构造方式} & \textbf{页面表现} & \textbf{论文中可用说明} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+E-01 & 编译错误 & 删除分号、拼写错误或使用未声明变量 & 系统返回 Compilation Error，并展示编译器错误信息 & 可说明平台能够识别语法层面的编译失败 \\
+E-02 & 答案错误 & 返回固定错误答案或忽略关键分支条件 & 系统返回 Wrong Answer，并保留对应测试结果 & 可说明平台基于标准输出比对完成结果判定 \\
+E-03 & 运行错误 & 通过 abort()、非法访问或异常退出构造运行期故障 & 系统返回 Runtime Error & 可说明平台能够识别程序运行期异常 \\
+E-04 & 时间超限 & 在核心函数中构造 while (1) \{\} 死循环 & 系统返回 Time Limit Exceeded & 可说明平台具备时间限制控制能力 \\
+\bottomrule
+\end{longtable}
+\endgroup
+
+\section{AI辅助反馈效果分析设计}
+
+AI 辅助反馈效果分析应选择若干具有代表性的提交样例，例如编译错误、逻辑错误、低效实现和风格较差的代码，观察系统输出的复杂度估计、评分结果和反馈建议是否具有合理性。测试重点不应放在“AI 是否绝对正确”，而应关注其输出是否与客观判题结果一致、是否具有一定解释价值、是否避免直接给出完整答案以及是否能够帮助学生理解问题。
+
+由于 AI 输出具有一定波动性，论文中应将其定位为“辅助效果分析”而非“标准结果验证”。在答辩与写作中，可以通过展示若干典型案例来证明该模块对学习支持的积极作用，同时说明其边界与局限。
+
+\begingroup
+\small
+\setlength{\LTleft}{0pt}
+\setlength{\LTright}{0pt}
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{P{0.07\textwidth}P{0.13\textwidth}P{0.16\textwidth}P{0.17\textwidth}P{0.16\textwidth}P{0.12\textwidth}}
+\caption{AI辅助反馈效果示例}\\
+\toprule
+\textbf{编号} & \textbf{提交场景} & \textbf{AI 输出重点} & \textbf{预期评价维度} & \textbf{实际情况} & \textbf{可否用于论文} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{编号} & \textbf{提交场景} & \textbf{AI 输出重点} & \textbf{预期评价维度} & \textbf{实际情况} & \textbf{可否用于论文} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+A-01 & 编译错误代码 & 错误原因解释、可能出错位置、修正方向提示 & 反馈是否指出语法问题且不过度直接代写 & [TODO] 待摘录 AI 返回的 1 至 2 句关键反馈 & 建议可用，优先用于展示错误解释能力 \\
+A-02 & 答案错误代码 & 逻辑问题提示、边界条件提醒、思路偏差分析 & 反馈是否能够指出导致 WA 的主要原因 & [TODO] 待结合 WA 样例实际输出填写 & 建议可用，可作为图6-1候选案例 \\
+A-03 & 低效正确代码 & 时间复杂度、空间复杂度、优化建议 & 反馈是否能够识别复杂度并给出合理优化方向 & [TODO] 待结合 AC 暴力解样例的实际分析结果填写 & 建议可用，适合体现 AI 的学习支持价值 \\
+A-04 & 可读性较差代码 & 命名、结构、可读性与代码风格建议 & 反馈是否能够从结构化角度提出改进意见 & [TODO] 待结合附录D中可读性较差样例的实际输出填写 & 视反馈质量择优使用 \\
+\bottomrule
+\end{longtable}
+\endgroup
+
+\begin{figure}[htbp]
+  \centering
+  \fbox{\parbox{0.88\textwidth}{\small [TODO]: 建议选用附录D中的 CE 或 WA 样例，对应提交在 AI 分析完成后截图得到，本图强调测试结果展示视角。}}
+  \caption{AI 分析结果展示截图}
 \end{figure}
 
-\section{不同情形的WPCR生产和存储求解的灵敏度分析}
+\section{测试结果与分析说明}
 
-经过灵敏度分析验证，通过遗传算法的迭代次数，以及种群数、变异率、交叉率以求得最短运行时间下的最优结果，
-得出模型运算灵敏度分析，模型在大于150次迭代运算的情况下运行结果基本一致，在策略迭代中采取大种群，
-在费用估计中可用最优变异交叉率来节省运算时间来求得全局最优解和动态稳定解。
+结合当前项目实现情况、构建验证结果以及前文设计的测试方案，可以对系统的测试结果与分析思路进行阶段性总结。现阶段论文已经完成测试环境、功能测试、判题正确性测试和 AI 辅助反馈测试的整体设计，并将核心测试表格整理完毕。后续只需在完成正式演示后，把对应截图编号、实际提交状态和 AI 反馈原文补入相应位置，即可形成较完整的测试结果章节。
 
-\begin{figure}[H]
-    \centering
-    \begin{subfigure}[t]{0.5\linewidth}
-        \captionsetup{justification=centering}
-        \begin{minipage}[b]{1\linewidth}
-            \centering
-            \includegraphics[width=0.8\linewidth]{ch6-2-1.png}
-            \caption{}
-        \end{minipage}
-    \end{subfigure}
-    \hspace{-5em}
-    \begin{subfigure}[t]{0.5\linewidth}
-        \captionsetup{justification=centering}
-        \begin{minipage}[b]{1\linewidth}
-            \centering
-            \includegraphics[width=0.8\linewidth]{ch6-2-2.png}
-            \caption{}
-        \end{minipage}
-    \end{subfigure}\\
-    \begin{subfigure}[t]{0.5\linewidth}
-        \captionsetup{justification=centering}
-        \begin{minipage}[b]{1\linewidth}
-            \centering
-            \includegraphics[width=0.8\linewidth]{ch6-2-3.png}
-            \caption{}
-        \end{minipage}
-    \end{subfigure}
-    \hspace{-5em}
-    \begin{subfigure}[t]{0.5\linewidth}
-        \captionsetup{justification=centering}
-        \begin{minipage}[b]{1\linewidth}
-            \centering
-            \includegraphics[width=0.8\linewidth]{ch6-2-3.png}
-            \caption{}
-        \end{minipage}
-    \end{subfigure}
-    \caption{不同迭代次数对比}
-    \label{f.ch6-2}
-\end{figure}
+\subsection{功能测试结果分析}
+
+从当前工程实现和已完成的构建验证情况来看，系统核心业务链路已经具备较好的完整性。平台围绕“题目浏览、代码编辑、在线提交、自动判题、结果展示、AI 辅助反馈”形成了相对闭环的使用流程，相关页面与交互模块在项目代码中已经完成对应实现。例如，题目工作区将题面描述、代码编辑器、提交记录、详情面板、测试用例面板和 AI 机器人面板组织在统一界面中，能够较好支撑程序设计训练场景下的连续操作需求。结合前文表6-2的测试项设计可以认为，当前系统已经具备完成登录访问、题目展示、模板加载、代码提交、提交记录查看以及 AI 反馈展示等核心功能的条件。
+
+在工程验证层面，项目已经完成 \texttt{npm run lint} 与 \texttt{npm run build} 的基础校验，说明当前代码版本在静态检查和生产构建层面不存在明显阻塞性错误。这意味着后续功能测试的重点不再是“系统能否运行”，而是“各模块在实际演示中的表现是否与预期一致”。因此，在正式演示时建议按表6-2的顺序逐项完成操作，并将结果统一回填为“通过”或“未通过”，同时补充对应截图编号 \texttt{[TODO]}，以增强论文测试章节的真实性和可复核性。
+
+\subsection{判题正确性测试结果分析}
+
+判题正确性是本平台最核心的验证内容。结合系统实现逻辑可以看出，平台在接收到提交后，会先进行题目存在性、测试用例完整性和 Docker 配置有效性等前置校验，随后进入编译、运行和测试用例判定流程。若编译阶段失败，系统会将状态更新为 \texttt{CE} 并回写编译错误信息；若编译成功，则继续在容器隔离环境中逐个执行测试用例，并根据输出比对结果或进程退出状态判定为 \texttt{AC}、\texttt{WA}、\texttt{RE}、\texttt{TLE} 等结果。这一处理链路与在线评测系统常见的标准判题流程保持一致，也说明平台已经具备较清晰的状态流转机制。
+
+从测试设计角度看，附录D中已经给出了 \texttt{AC}、\texttt{CE}、\texttt{WA}、\texttt{RE}、\texttt{TLE} 五类可直接运行的样例代码，能够较完整地覆盖本系统最关键的判题状态。其中，\texttt{AC} 样例用于验证标准正确提交流程；\texttt{CE} 样例用于验证编译错误识别；\texttt{WA} 样例用于验证输出比对机制；\texttt{RE} 样例用于验证运行期异常处理；\texttt{TLE} 样例用于验证时间限制控制能力。后续只需将这些样例依次提交，并把系统返回状态、截图编号和是否与预期一致的结论填入表6-3，即可形成完整的判题正确性测试证据链。若实际返回结果与预期完全一致，则可以据此说明系统在基础评测状态识别方面已经达到预期目标。
+
+\subsection{AI 辅助反馈效果分析结论}
+
+与传统仅返回判题结果的在线评测平台相比，本文实现的系统在客观判题完成后进一步引入了 AI 辅助分析流程。根据当前代码实现，系统会在创建提交记录后异步创建 \texttt{CodeAnalysis} 记录，并通过 \texttt{QUEUED}、\texttt{PROCESSING}、\texttt{COMPLETED}、\texttt{FAILED} 等状态跟踪分析任务执行情况。分析阶段调用 DeepSeek 模型，对提交代码进行时间复杂度、空间复杂度、整体评分、代码风格、可读性、效率和正确性等多维度评价，并将结构化结果写回数据库，供前端详情面板或机器人面板展示。这样的实现使 AI 模块能够在不干扰主判题链路的前提下，为学生提供额外的解释性反馈。
+
+从论文写作角度看，AI 辅助反馈模块的价值并不体现在“替代判题”，而在于“增强学习支持”。因此，在后续测试中更适合重点观察三个方面：其一，AI 输出是否与客观判题结果保持基本一致；其二，反馈内容是否能够指出问题类型并提供可执行的改进方向；其三，反馈是否避免直接给出完整答案，从而保留程序设计训练中的思考空间。表6-5已经预留了编译错误、答案错误、低效正确代码和可读性较差代码等四类典型样例，后续只需从实际提交中选取反馈质量较高的 1 至 2 条记录补入 \texttt{[TODO]} 内容，并配合图5-7或图6-1截图展示，即可较有说服力地说明 AI 模块在教学辅助层面的实际作用。
+
+\subsection{补充说明与后续回填建议}
+
+综合目前的系统实现和文档准备情况，第六章已经完成了从测试环境、功能测试设计、判题正确性测试设计到 AI 辅助反馈测试设计的主体内容搭建，后续工作主要集中在补充演示证据，而不需要重新改写章节结构。建议后续按“先运行样例、再截图、最后回填表格与分析”的顺序推进：首先提交附录D中的 \texttt{AC}、\texttt{CE}、\texttt{WA}、\texttt{RE}、\texttt{TLE} 样例，补齐表6-3；其次从提交记录和 AI 面板中截取图5-5、图5-6、图5-7和图6-1；最后把表6-2、表6-5中的 \texttt{[TODO]} 项替换为真实结果、截图编号和 AI 反馈摘录。这样处理可以最大程度减少重复劳动，也能够保证论文中的测试描述与系统实际运行情况保持一致。
+
+若后续时间允许，并且项目中补充了排行榜等轻量扩展能力，也可以在本节末尾增加简短的扩展功能测试说明。但从当前毕设主线来看，即便不补充这类扩展项，只要核心判题链路和 AI 辅助链路的测试证据完整，论文的系统测试章节也已经具备较好的完整性和说服力。
+
+\section{本章小结}
+
+本章给出了系统测试与结果分析的写作框架，明确了测试目标、测试环境、功能测试设计、判题正确性测试设计以及 AI 辅助反馈分析思路。待项目演示材料和真实测试结果整理完成后，可直接在本章预留位置补入相应图表和分析内容。

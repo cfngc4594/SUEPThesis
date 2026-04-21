@@ -1,123 +1,214 @@
-%%
-% The SUEPThesis Template for Bachelor Graduation Thesis
-%
-% 上海电力大学毕业设计（论文）中英文摘要 —— 使用 XeLaTeX 编译
-%
-% Copyright 2020-2023 SUEPaper
-%
-% This work may be distributed and/or modified under the
-% conditions of the LaTeX Project Public License, either version 1.3
-% of this license or (at your option) any later version.
-% The latest version of this license is in
-%   http://www.latex-project.org/lppl.txt
-% and version 1.3 or later is part of all distributions of LaTeX
-% version 2005/12/01 or later.
-%
-% This work has the LPPL maintenance status `maintained'.
-%
-% The Current Maintainer of this work is Haiwen Zhang.
-%%
+\chapter{系统详细设计与实现}
 
-\chapter{未来订单未知情形的WPCR不确定生产和存储模型}
+\section{实现概述}
 
-\section{WPCR不确定生产和存储模型的建立}
+结合当前项目实现情况，平台采用全栈 Web 应用方式组织前后端能力：前端负责题目展示、代码编辑、提交记录查看与 AI 反馈交互，后端负责题目读取、提交入库、判题调度、容器调用和分析结果持久化。系统虽然部署为统一工程，但在逻辑职责上仍按照“题库管理、判题执行、分析反馈、辅助管理”进行拆分，使后续模块迭代和论文叙事保持一致。
 
-在该模型中，要求既能够保障每天的WPCR订单均以95\%以上的概率保证正常交付，
-又能够以85\%以上的概率保证整周的WPCR订单能正常交付。
+从已有实现来看，系统主链路已经覆盖题目列表、题目详情、代码编辑、代码提交、自动判题、提交详情和 AI 辅助反馈等核心功能，其中“判题结果先确定、AI 反馈后补充”的处理策略与本文前述总体设计相一致。对于教师管理、学生管理和复杂统计面板等配套页面，虽然工程中已存在部分实现，但本文不将其作为核心成果展开，而是将论文重点放在评测平台主链路的设计与实现上。
 
-设划置信区间，置信区间是95\%，只要假设得到的偏差值大于0.05就说明拒绝原假设，且一周生产计划中保证85\%以上的日交付率，
-如一周内至少有一天未正常交付则拒绝原假设。
+\section{整体实现结构与技术支撑}
 
-设$d$为决策变量的函数，正偏差变量$d^+$表示决策值超过目标值的部分，负偏差变量$d^-$表示决策值未达到目标值的部分，
-这里$d0$表示$d$的目标值。
-\begin{equation}
-    d^+=\max\{d-d_0,0\}
-\end{equation}
-\begin{equation}
-    d^-=-\min\{d-d_0,0\}
-\end{equation}
-
-因决策值不可能既超过目标值同时又未达到目标值，即恒有
-\begin{equation}
-    d^+ \times d^- = 0
-\end{equation}
-
-设$x_k(k=1,2,...,n)$是目标规划的决策变量。设有$q$个优先级别，分别为$P_1,P_2,...,P_q$。
-在同一个优先级$P$中，有不同的权重，分别记为$w_{kj}^+, w_{kj}^-(j=1,2,...,l)$。
-因此目标规划模型的一般数学表达式为
-\begin{equation}
-    \min z=\sum_{k=1}^{q}P_k(\sum_{l}^{j=1}w_{kj}^-d_{j}^- + w_{kj}^+d_{j}^+)
-\end{equation}
-\begin{equation}
-    \begin{cases}
-        \min\sum_{k=1}^{n}(
-            C_{\uppercase\expandafter{\romannumeral1}}^{'''}+
-            C_{\uppercase\expandafter{\romannumeral2}}^{'''}+
-            C_{\uppercase\expandafter{\romannumeral3}}^{'''}) \\
-        x_k \geqslant 0 \\
-        d_i^-,d_i^+\geqslant 0,i=1,2,...,l
-    \end{cases}
-\end{equation}
-
-\section{WPCR不确定生产和存储模型的求解}
-
-\subsection{WPCR不确定生产和存储模型的求解算法}
-
-已经有研究表明策略迭代算法可以在适当的假设下产生最优（最小）成本、最优稳态控制策略和平均成本最优方程的解，且有比较好的效果。
-因此本模型采用策略迭代算法进行求解。
-
-下面给出策略迭代算法的具体实现步骤。
-
-步骤一：初始化，$i=0$，选择初始容许控制策略。
-
-步骤二：策略评估，$i=i+1$，控制策略$u^{i-1}$下的值函数$V^i$可以根据以下公式获得
-\begin{equation}
-    L(x,u^{i-1}) + (\nabla V)^{iT}(f(x)+g(x)u^{i-1})=0
-\end{equation}
-
-步骤三：策略提升，更新后的控制策略$u^i$如下
-\begin{equation}
-    u^i=-w(u)g^T(x)\nabla V^i
-\end{equation}
-
-步骤四：判断，若策略不满足收敛条件，那么返回步骤二继续执行，否则进入步骤五。
-
-步骤五：结束，获得最优控制策略$u^*=u^i$和最优值函数$V^*=V^i$。
-汇总上述五步，得如下策略迭代算法模拟流程图\ref{f.ch5-1}\cite{叶帅2021基于事件触发自适应动态规划的多四旋翼无人机优化控制}。
-
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=0.5\linewidth]{ch5-1.png}
-    \caption{迭代费用对比}
-    \label{f.ch5-1}
+\begin{figure}[htbp]
+  \centering
+  \fbox{\parbox{0.88\textwidth}{\small [TODO]: 采用 draw.io、ProcessOn 或 PowerPoint 手工绘制，建议展示表现层、业务服务层、评测执行层、AI辅助层、数据层五层结构。}}
+  \caption{系统总体架构图}
 \end{figure}
 
-\subsection{WPCR不确定生产和存储模型的求解结果}
+本章在总体设计基础上，进一步结合当前工程中的实际实现，对平台核心模块进行了分层说明。通过对数据模型、题库组织、提交流转、容器化判题、AI 分析和前端工作区组织方式的细化描述，可以使论文内容与项目代码形成更紧密的一一对应关系，也便于后续补入截图、表格和测试结果。
 
-\begin{table}[H]
-    \caption{WPCR不确定生产和存储模型求解的结果}
-    \label{T.ch5-1}
-    \centering
-    \renewcommand\arraystretch{1.5} 
-    \begin{tabular}{@{}ccccccc@{}} 
-    \toprule
-    \textbf{日期} & \multicolumn{1}{c}{\textbf{WPCR外部}} & \multicolumn{1}{c}{\textbf{A组装}} 
-    & \multicolumn{1}{c}{\textbf{B组装}} & \multicolumn{1}{c}{\textbf{C组装}}
-    & \multicolumn{1}{c}{\textbf{生产准备}} & \multicolumn{1}{c}{\textbf{库存}} \\
-                & \multicolumn{1}{c}{\textbf{需求数量}} & \multicolumn{1}{c}{\textbf{数量}} 
-    & \multicolumn{1}{c}{\textbf{数量}} & \multicolumn{1}{c}{\textbf{数量}}
-    & \multicolumn{1}{c}{\textbf{费用}} & \multicolumn{1}{c}{\textbf{费用}} \\
-    \midrule
-    \textbf{周一} & 237 & 316 & 395 & 41 & 700 & 1619.5 \\
-    \textbf{周二} & 237 & 316 & 395 & 41 & 700 & 1619.5 \\
-    \textbf{周三} & 237 & 316 & 395 & 41 & 700 & 1619.5 \\
-    \textbf{周四} & 237 & 316 & 395 & 41 & 700 & 1619.5 \\
-    \textbf{周五} & 237 & 316 & 395 & 41 & 700 & 1619.5 \\
-    \textbf{周六} & 237 & 316 & 395 & 41 & 700 & 1619.5 \\
-    \textbf{周日} & 237 & 316 & 395 & 41 & 700 & 1619.5 \\
-    \textbf{总和} & 237 & 316 & 395 & 41 & 700 & 1619.5 \\ 
-    \bottomrule
-    \end{tabular}
-\end{table}
+在数据库访问层面，系统通过 Prisma 管理数据模型和查询逻辑，并在项目初始化或模式调整后通过生成客户端保持类型安全。题目、提交、测试结果和分析结果均通过统一的数据访问层进行读写，这使得前端页面、判题流程和 AI 模块之间能够围绕统一模型协同工作。
 
-从表\ref{T.ch5-1}可以看出，该模型下，一周里面每天都有生产计划，不至于出现前几种模型中出现无生产计划的情况。
+在运行环境支持上，系统通过配置项区分本地 Docker 模式和远程 Docker 模式。若在本地模式下运行，平台直接通过宿主机 Docker 套接字管理容器；若在远程模式下运行，则根据协议、地址、端口和证书建立远程 Docker 连接。这样的设计使判题执行环境能够与 Web 服务解耦，也为后续将判题节点迁移到独立服务器或容器集群提供了可实施路径。
+
+\section{数据模型设计}
+
+\begin{figure}[htbp]
+  \centering
+  \fbox{\parbox{0.88\textwidth}{\small [TODO]: 采用 draw.io、ProcessOn 或 PowerPoint 手工绘制，建议保留 User、Problem、ProblemLocalization、Template、Submission、Testcase、TestcaseInput、TestcaseResult、CodeAnalysis 等主链路实体。}}
+  \caption{数据库实体关系图}
+\end{figure}
+
+\subsection{用户与权限数据设计}
+
+当前系统用户模型以 User 实体为核心，记录用户名称、邮箱、密码、头像和角色等信息。角色字段用于区分管理员、教师与普通学生等不同访问主体，并结合认证模块完成登录后的身份识别。对于平台主链路而言，角色机制主要影响题目维护权限和后台访问范围，而不改变学生提交判题的核心流程。
+
+\subsection{题目内容与模板数据设计}
+
+题目实体 Problem 负责描述 displayId、难度、是否发布、时间限制、内存限制等基础属性。其中 displayId 用于面向用户的题号展示，timeLimit 与 memoryLimit 则直接影响判题执行阶段的资源约束。ProblemLocalization 通过 problemId、locale 和 type 组合唯一确定一条本地化内容，用于分别存储题目标题、题面描述和题解内容；Template 则通过 problemId 与 language 的组合存储不同语言的模板代码。
+
+\subsection{提交、测试用例与分析结果设计}
+
+\begingroup
+\small
+\setlength{\LTleft}{0pt}
+\setlength{\LTright}{0pt}
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{P{0.15\textwidth}P{0.29\textwidth}P{0.44\textwidth}}
+\caption{核心数据表字段设计汇总}\\
+\toprule
+\textbf{数据表} & \textbf{关键字段} & \textbf{主要用途} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{数据表} & \textbf{关键字段} & \textbf{主要用途} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+User & id, email, password, role, image & 存储用户基本信息与角色标识，为登录认证、权限区分和提交归属提供基础支持。 \\
+Problem & id, displayId, difficulty, isPublished, timeLimit, memoryLimit, isTrim & 描述题目的基础约束与评测配置，是题库管理和判题流程的核心实体。 \\
+Problem\allowbreak Localization & problemId, locale, type, content & 按语言和内容类型存储题目标题、题面描述与题解等文本信息，支持多语言展示。 \\
+Template & problemId, language, content & 保存不同编程语言对应的模板代码，供用户进入题目页后直接加载。 \\
+Submission & id, language, content, status, message, timeUsage, memoryUsage, userId, problemId & 记录用户每次代码提交及其判题状态、错误信息和资源消耗，是评测主链路的核心业务表。 \\
+Testcase & id, expectedOutput, problemId & 保存标准测试用例及其期望输出，为程序运行结果判定提供依据。 \\
+Testcase\allowbreak Input & id, testcaseId, index, name, value & 保存测试用例的有序输入项，便于运行阶段按顺序组装标准输入流。 \\
+Testcase\allowbreak Result & id, submissionId, testcaseId, isCorrect, output, timeUsage, memoryUsage & 记录每个测试用例在某次提交下的执行结果，用于提交详情展示和测试分析。 \\
+Code\allowbreak Analysis & id, submissionId, status, timeComplexity, spaceComplexity, overallScore, feedback & 保存 AI 对提交代码的结构化分析结果，实现客观判题与智能反馈分离存储。 \\
+\bottomrule
+\end{longtable}
+\endgroup
+
+\begingroup
+\small
+\setlength{\LTleft}{0pt}
+\setlength{\LTright}{0pt}
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{P{0.10\textwidth}P{0.20\textwidth}P{0.56\textwidth}}
+\caption{Submission 状态码及含义说明表}\\
+\toprule
+\textbf{状态码} & \textbf{含义} & \textbf{触发阶段/说明} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{状态码} & \textbf{含义} & \textbf{触发阶段/说明} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+PD & Pending & 提交记录已创建，处于判题流程起点，尚未进入编译阶段。 \\
+QD & Queued & 预留的排队状态，可用于后续引入任务队列或异步调度场景；当前主流程中较少直接使用。 \\
+CP & Compiling & 代码已进入编译阶段，系统正在调用对应语言编译器进行构建。 \\
+CE & Compilation Error & 编译失败，系统会将编译器错误输出写回 Submission.message 供前端展示。 \\
+CS & Compilation Success & 编译成功的中间状态，通常会很快继续流转到运行阶段。 \\
+RU & Running & 程序正在受控容器环境中执行测试用例。 \\
+AC & Accepted & 所有测试用例均通过，提交被判定为正确结果。 \\
+WA & Wrong Answer & 程序可正常运行，但输出结果与标准答案不一致。 \\
+RE & Runtime Error & 程序在运行阶段异常退出或发生非法操作。 \\
+TLE & Time Limit Exceeded & 程序在规定时间限制内未完成执行，通常由死循环或低效逻辑触发。 \\
+MLE & Memory Limit Exceeded & 程序运行期间内存占用超过题目限定阈值。 \\
+SE & System Error & 系统环境、配置或流程执行出现异常，例如题目缺失、Docker 配置缺失或容器调用失败。 \\
+\bottomrule
+\end{longtable}
+\endgroup
+
+Submission 是整个平台中最关键的业务实体之一，用于存储语言类型、源代码、判题状态、错误信息、时间使用量和内存使用量等信息。Testcase 与 TestcaseInput 共同描述标准测试数据；TestcaseResult 则用于保存每个用例执行后的结果。这样的结构使判题过程能够精细记录到“提交级”和“用例级”两个层面，便于展示提交详情，也便于后续统计和教学分析。
+
+CodeAnalysis 用于保存 AI 辅助分析结果，它通过 submissionId 与 Submission 建立一对一关系，并使用独立状态字段跟踪分析任务的处理阶段。这样做的好处在于：一方面，AI 分析可以异步运行而不阻塞主判题流程；另一方面，系统能够把客观判题结果与智能分析结果分离存储，避免两类结果相互干扰。
+
+\section{题库管理模块实现}
+
+\subsection{题库实体与职责划分}
+
+题库管理模块主要由 Problem、ProblemLocalization、Template 和 Testcase 等实体支撑。其中 Problem 负责题目基础约束，ProblemLocalization 负责题目文字内容，Template 负责不同语言的模板代码，Testcase 及其输入项负责标准评测数据。这样的设计使题目内容维护、前端展示和后端判题能够围绕同一份题目数据协同工作。
+
+\subsection{题目内容读取与展示实现}
+
+\begin{figure}[htbp]
+  \centering
+  \fbox{\parbox{0.88\textwidth}{\small [TODO]: 使用管理员账号访问 /dashboard/usermanagement/problem 页面后截图得到，作为题库管理模块的辅助界面佐证。}}
+  \caption{题库管理页面截图}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \fbox{\parbox{0.88\textwidth}{\small [TODO]: 打开题目“1000 两数之和”详情页后截图得到，建议同时展示题面、难度、时间限制、内存限制与模板代码。}}
+  \caption{题目详情页面截图}
+\end{figure}
+
+从功能边界上看，题库管理模块的主要任务是为判题主链路提供准确、完整和可维护的数据来源，而不是在论文中展开复杂后台交互细节。因此，本文只描述与题目内容组织、模板代码和测试数据直接相关的实现。
+
+系统同时支持按语言维度为题目保存模板代码，使学生进入题目页后可以直接获得对应语言的初始代码。测试数据则通过 Testcase 与 TestcaseInput 共同组织，其中 TestcaseInput 保存有序输入项，便于在运行阶段按顺序组合为标准输入流。
+
+在题目内容组织方式上，系统将标题、题面描述和题解说明分别以 ProblemLocalization 的不同 type 存储，并配合 locale 字段支持中英文等多语言内容读取。当前实现中，题目读取动作会统一查询题目基本信息、模板代码、测试用例及其输入项、本地化内容等数据，并将题面描述序列化为可直接渲染的内容对象返回前端。
+
+\section{在线提交与容器化判题模块实现}
+
+\begin{figure}[htbp]
+  \centering
+  \fbox{\parbox{0.88\textwidth}{\small [TODO]: 通过题目“1000 两数之和”的提交结果页截图得到，建议优先使用附录D中的 AC 样例，也可使用 WA 样例作为补充。}}
+  \caption{代码提交与判题结果页面截图}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \fbox{\parbox{0.88\textwidth}{\small [TODO]: 连续提交附录D中的 AC、CE、WA、RE、TLE 样例后，在提交记录面板截图得到，尽量让同一张图中出现多种状态。}}
+  \caption{提交记录页面截图}
+\end{figure}
+
+\subsection{提交受理与状态流转}
+
+在提交入口处，系统首先校验用户是否登录、题目是否存在、测试用例是否存在以及对应语言的 Docker 配置是否完整。通过这些前置检查，可以避免无效请求直接进入判题流程。校验通过后，系统创建 Submission 记录，并以 Pending 状态作为判题起点。随后，源代码被封装为指定文件名写入 tar 数据流，再上传到新建的容器工作目录中，为后续编译执行做准备。
+
+\subsection{编译流程实现}
+
+编译阶段会先把 Submission 状态更新为编译中，再根据语言类型生成对应命令。当前实现中，C 语言通过 gcc -O2 编译为 main，C++ 通过 g++ -O2 编译为 main。为避免编译日志无限增长，系统对编译输出设置了长度限制；若编译失败，则将错误信息写回 Submission.message，并把状态更新为 Compilation Error。
+
+\subsection{运行与用例判定实现}
+
+在运行阶段，系统按测试用例顺序逐个创建执行实例，将排序后的输入参数写入标准输入流，再根据程序输出与标准输出进行比较，从而判定答案是否正确。若题目配置启用了裁剪空白字符比较，则输出对比采用 trim 方式；否则按原始输出严格匹配。每个用例的输出、时间消耗和正确性结果都会保存到 TestcaseResult。
+
+若某个测试用例触发答案错误、运行错误、时间超限或内存超限，系统会立即写入对应的 TestcaseResult 记录，并终止后续用例执行。只有当前一个用例返回正常执行状态时，才会继续处理下一个用例。这一实现符合在线评测系统常见的短路判题思路，也有助于节省执行资源。
+
+当所有测试用例均通过后，系统会统计该提交下各用例的时间消耗，并结合容器运行统计更新最终的时间使用量和内存使用量，再把 Submission 的状态设置为 Accepted。这样，提交记录不仅保存了最终结果，还能保留一定的性能信息，为后续结果展示和教学分析提供依据。
+
+\subsection{资源约束与安全隔离实现}
+
+容器创建逻辑中，系统为每次判题准备独立运行环境，设置工作目录、内存限制，并默认禁用网络，从而降低恶意代码或异常程序对宿主系统的影响。由于每次提交都在新的容器环境中完成编译和运行，平台可以较好保证不同提交之间的环境隔离和执行一致性。
+
+这种执行方式虽然还属于单机原型阶段的轻量容器化判题，但已经体现出云原生思路中的几个关键点：统一镜像环境、按任务动态创建执行单元、资源限制和最小权限运行。对于毕设原型而言，这样的实现复杂度和可展示性之间取得了较好的平衡。
+
+\section{AI辅助反馈模块实现}
+
+\subsection{模块定位与触发方式}
+
+AI 辅助反馈模块的作用并非替代评测，而是利用模型的代码理解和文本生成能力，为学生提供复杂度分析、质量评价和改进建议。该模块对应工程中的分析动作与详情展示逻辑，属于“后置辅助”能力，而不是主判题链路的一部分。
+
+\subsection{分析流程与结果落库实现}
+
+\begin{figure}[htbp]
+  \centering
+  \fbox{\parbox{0.88\textwidth}{\small [TODO]: 选择附录D中的 CE 或 WA 样例对应提交，待 AI 分析完成后在 AI 面板截图得到，重点保留复杂度、评分与反馈文本。}}
+  \caption{AI 辅助反馈页面截图}
+\end{figure}
+
+当前实现中，系统在创建 Submission 后会异步触发代码分析任务，并先为该提交创建一条 CodeAnalysis 记录，再按“排队—处理中—完成—失败”等状态推进。由于分析任务与判题主流程分离，因此即使 AI 服务异常，平台仍然可以完成客观判题并返回标准结果。
+
+分析执行时，系统将提交代码发送至大语言模型，并通过工具调用方式约束模型输出为结构化结果，包括时间复杂度、空间复杂度、综合评分、代码风格评分、可读性评分、效率评分、正确性评分以及详细反馈文本。结构化结果再被写回 CodeAnalysis 记录，供后续页面展示和分析。
+
+在实现边界上，AI 分析结果始终作为附加信息存在，不会覆盖或影响客观判题状态。这种设计使平台能够在保持评测公平性的前提下提供额外的学习支撑，也避免了将概率性输出直接用于评分带来的风险。
+
+在反馈结果写入数据库后，前端即可基于提交记录查询关联的分析结果，并在详情面板或机器人面板中展示复杂度、评分和反馈文本。由于分析数据采用独立实体保存，系统可以方便地扩展后续更多评价维度，例如知识点标签、错误类型分类和分阶段提示等。
+
+\section{界面组织与辅助功能说明}
+
+对于后台侧的题目维护、用户管理和统计页面，工程中已经具备一定基础实现，但这些能力更多承担教学辅助或配套管理职责，并非本文研究重点。从毕设范围控制的角度出发，论文只需说明其存在和支撑作用，而不应在此部分投入过多篇幅。
+
+\subsection{前端工作区与交互组织}
+
+\begin{figure}[htbp]
+  \centering
+  \fbox{\parbox{0.88\textwidth}{\small [TODO]: 打开题目“1000 两数之和”的完整工作区截图得到，建议同时包含题面、代码编辑区、提交记录区与 AI 面板。}}
+  \caption{题目求解主界面截图}
+\end{figure}
+
+当前工程采用面向任务求解的工作区组织方式，将题面描述、代码编辑、提交记录、题解、测试用例、提交详情以及 AI 机器人面板组合到统一视图中。学生进入题目页后，无需在多个独立页面之间来回切换，即可完成“读题—写码—提交—查看判题—获取反馈”的完整闭环。这种工作区式交互能够降低认知切换成本，也更符合程序设计训练的使用习惯。
+
+\subsection{运行环境与部署实现}
+
+在运行环境支持上，系统通过配置项区分本地 Docker 模式和远程 Docker 模式。若在本地模式下运行，平台直接通过宿主机 Docker 套接字管理容器；若在远程模式下运行，则根据协议、地址、端口和证书建立远程 Docker 连接。这样的设计使判题执行环境能够与 Web 服务解耦，也为后续将判题节点迁移到独立服务器或容器集群提供了可实施路径。
+
+[TODO]: 此处补充本地部署成功截图或运行说明，建议至少覆盖 npx prisma generate、npx prisma db seed、npm run build 通过以及 Docker 可用。
+
+\section{本章小结}
+
+从部署方式看，当前系统已经能够支持单机环境下的完整演示与运行，也为后续分离判题执行环境、引入更多语言镜像和扩展多节点调度预留了基础。对本科毕设而言，这种“先完成完整原型，再保留工程扩展空间”的处理方式更有利于保证成果可展示、论文可落地。
