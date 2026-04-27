@@ -1,0 +1,38 @@
+\begin{tikzpicture}[
+  x=1cm,
+  y=1cm,
+  font=\scriptsize,
+  entity/.style={
+    draw,
+    rounded corners=2pt,
+    fill=white,
+    align=left,
+    text width=3.45cm,
+    inner sep=5pt
+  },
+  relation/.style={-{Stealth[length=2.1mm]}, thick, draw=black!65}
+]
+  \node[entity] (ploc) at (-6.1, 3.2) {\textbf{ProblemLocalization}\\\rule{\linewidth}{0.3pt}\\problemId (FK)\\locale\\type\\content};
+  \node[entity] (problem) at (0, 3.2) {\textbf{Problem}\\\rule{\linewidth}{0.3pt}\\id (PK)\\displayId\\difficulty\\timeLimit\\memoryLimit};
+  \node[entity] (submission) at (6.1, 3.2) {\textbf{Submission}\\\rule{\linewidth}{0.3pt}\\id (PK)\\userId (FK)\\problemId (FK)\\language\\status\\timeUsage};
+  \node[entity] (user) at (6.1, 6.25) {\textbf{User}\\\rule{\linewidth}{0.3pt}\\id (PK)\\email\\password\\role\\image};
+
+  \node[entity] (template) at (-6.1, -0.3) {\textbf{Template}\\\rule{\linewidth}{0.3pt}\\problemId (FK)\\language\\content};
+  \node[entity] (testcase) at (0, -0.3) {\textbf{Testcase}\\\rule{\linewidth}{0.3pt}\\id (PK)\\problemId (FK)\\expectedOutput};
+  \node[entity] (analysis) at (6.1, -0.3) {\textbf{CodeAnalysis}\\\rule{\linewidth}{0.3pt}\\submissionId (FK)\\status\\timeComplexity\\overallScore\\feedback};
+
+  \node[entity] (input) at (0, -3.8) {\textbf{TestcaseInput}\\\rule{\linewidth}{0.3pt}\\id (PK)\\testcaseId (FK)\\index\\name\\value};
+  \node[entity] (result) at (6.1, -3.8) {\textbf{TestcaseResult}\\\rule{\linewidth}{0.3pt}\\id (PK)\\submissionId (FK)\\testcaseId (FK)\\isCorrect\\output\\timeUsage};
+
+  \draw[relation] (problem.west) -- node[above, fill=white, inner sep=1pt] {1:N} (ploc.east);
+  \draw[relation] (problem.south west) -- node[left, fill=white, inner sep=1pt] {1:N} (template.north east);
+  \draw[relation] (problem.south) -- node[right, fill=white, inner sep=1pt] {1:N} (testcase.north);
+  \draw[relation] (problem.east) -- node[above, fill=white, inner sep=1pt] {1:N} (submission.west);
+
+  \draw[relation] (user.south) -- node[right, fill=white, inner sep=1pt] {1:N} (submission.north);
+  \draw[relation] (submission.south) -- node[right, fill=white, inner sep=1pt] {1:1} (analysis.north);
+  \draw[relation] (submission.south east) -- node[right, fill=white, inner sep=1pt] {1:N} (result.north east);
+
+  \draw[relation] (testcase.south) -- node[left, fill=white, inner sep=1pt] {1:N} (input.north);
+  \draw[relation] (testcase.east) -- node[above, fill=white, inner sep=1pt] {1:N} (result.west);
+\end{tikzpicture}

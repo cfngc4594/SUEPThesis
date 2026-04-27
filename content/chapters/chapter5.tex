@@ -10,7 +10,9 @@
 
 \begin{figure}[htbp]
   \centering
-  \fbox{\parbox{0.88\textwidth}{\small [TODO]: 采用 draw.io、ProcessOn 或 PowerPoint 手工绘制，建议展示表现层、业务服务层、评测执行层、AI辅助层、数据层五层结构。}}
+  \resizebox{0.96\textwidth}{!}{\input{figures/system_architecture.tex}}
+  \par\vspace{0.6em}
+  \fbox{\parbox{0.88\textwidth}{\small [TODO]: 当前为 LaTeX 生成示意图，后续如需替换为手工图，可按原说明重绘表现层、业务服务层、评测执行层、AI辅助层、数据层五层结构。}}
   \caption{系统总体架构图}
 \end{figure}
 
@@ -55,7 +57,9 @@ AI 分析模块 & \texttt{analyze-code.ts} & 在判题主链路外异步创建 C
 
 \begin{figure}[htbp]
   \centering
-  \fbox{\parbox{0.88\textwidth}{\small [TODO]: 采用 draw.io、ProcessOn 或 PowerPoint 手工绘制，建议保留 User、Problem、ProblemLocalization、Template、Submission、Testcase、TestcaseInput、TestcaseResult、CodeAnalysis 等主链路实体。}}
+  \resizebox{0.96\textwidth}{!}{\input{figures/core_er_diagram.tex}}
+  \par\vspace{0.6em}
+  \fbox{\parbox{0.88\textwidth}{\small [TODO]: 当前为 LaTeX 生成示意图，后续如需替换为手工图，可按原说明保留 User、Problem、ProblemLocalization、Template、Submission、Testcase、TestcaseInput、TestcaseResult、CodeAnalysis 等主链路实体。}}
   \caption{数据库实体关系图}
 \end{figure}
 
@@ -340,7 +344,7 @@ AI 辅助反馈模块的作用并非替代评测，而是利用模型的代码�
 
 在运行环境支持上，系统通过配置项区分本地 Docker 模式和远程 Docker 模式。若在本地模式下运行，平台直接通过宿主机 Docker 套接字管理容器；若在远程模式下运行，则根据协议、地址、端口和证书建立远程 Docker 连接。这样的设计使判题执行环境能够与 Web 服务解耦，也为后续将判题节点迁移到独立服务器或容器集群提供了可实施路径。
 
-[TODO]: 此处补充本地部署成功截图或运行说明，建议至少覆盖 npx prisma generate、npx prisma db seed、npm run build 通过以及 Docker 可用。
+[TODO]: 此处补充本地部署成功截图或运行说明，建议至少覆盖 bunx prisma generate、bunx prisma db seed、bun run build 通过以及 Docker 可用。
 
 从当前仓库提供的容器编排文件来看，系统部署并不是单容器模式，而是由 Web 主服务、两个语言服务容器和数据库容器共同组成。主服务 \texttt{judge4c} 负责页面访问、业务处理和判题入口；\texttt{lsp-c} 与 \texttt{lsp-cpp} 分别为 C 和 C++ 编辑器提供语言服务支持；\texttt{postgres} 则负责业务数据持久化。这样的服务划分说明，项目虽然以本科毕设原型为目标，但在开发体验与运行支撑层面已经具备一定的工程完整性，而不是仅仅完成“后端判题接口 + 前端展示页”的最小闭环。
 

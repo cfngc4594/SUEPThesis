@@ -5,7 +5,7 @@
 \addcontentsline{toc}{chapter}{附录A\hspace{1ex}系统部署与运行说明}
 
 \subsection*{部署环境准备}
-本系统基于 Next.js、Prisma、PostgreSQL 与 Docker 构建，适用于高校程序设计教学场景下的本地演示与功能验证。部署前应确保操作系统已经安装 Node.js、npm、PostgreSQL 与 Docker，并保证判题所需的 \texttt{gcc:latest} 镜像可正常使用。若采用本地 Docker 模式，系统通过 \texttt{/var/run/docker.sock} 调用宿主机 Docker；若采用远程 Docker 模式，则需要额外配置远程地址、协议和证书路径。
+本系统基于 Next.js、Prisma、PostgreSQL 与 Docker 构建，适用于高校程序设计教学场景下的本地演示与功能验证。部署前应确保操作系统已经安装 Node.js、Bun、PostgreSQL 与 Docker，并保证判题所需的 \texttt{gcc:latest} 镜像可正常使用。若采用本地 Docker 模式，系统通过 \texttt{/var/run/docker.sock} 调用宿主机 Docker；若采用远程 Docker 模式，则需要额外配置远程地址、协议和证书路径。
 
 \subsection*{环境变量配置}
 项目根目录为 \texttt{/Users/kali/Public/Github/judge4c}。首次部署时可参考 \texttt{.env.example} 复制生成 \texttt{.env} 文件，并按实际环境填写数据库、认证和 AI 服务所需的关键参数。
@@ -21,29 +21,29 @@ cp .env.example .env
 在完成环境变量配置后，可执行数据库迁移、Prisma 客户端生成与种子数据导入操作。当前项目已经提供迁移文件与种子脚本，可直接完成基础题目与配置数据的初始化。
 
 \begin{verbatim}
-npx prisma migrate deploy
-npx prisma generate
-npx prisma db seed
+bunx prisma migrate deploy
+bunx prisma generate
+bunx prisma db seed
 \end{verbatim}
 
 \subsection*{启动与运行验证}
-开发环境可在安装依赖后通过 \texttt{npm run dev} 启动，生产可构建性可通过 \texttt{npm run build} 验证。若采用 Docker Compose 方式，也可以直接启动整套本地环境。应用默认访问地址为 \texttt{http://localhost:3000}。
+开发环境可在安装依赖后通过 \texttt{bun run dev} 启动，生产可构建性可通过 \texttt{bun run build} 验证。若采用 Docker Compose 方式，也可以直接启动整套本地环境。应用默认访问地址为 \texttt{http://localhost:3000}。
 
 \begin{verbatim}
-npm install
-npm run build
-npm run dev
+bun install
+bun run build
+bun run dev
 docker compose -f compose.local.yml up -d --build
 \end{verbatim}
 
-在本文整理阶段，项目已经完成 \texttt{npm run build} 通过的验证，可作为系统具备运行可行性的直接依据。后续若需要补充部署截图，可在第五章运行环境说明处或本附录末尾继续插入对应图片。
+在本文整理阶段，项目已经完成 \texttt{bun run build} 通过的验证，可作为系统具备运行可行性的直接依据。后续若需要补充部署截图，可在第五章运行环境说明处或本附录末尾继续插入对应图片。
 
 \section{关键页面截图汇总与回填说明}
 \pdfbookmark[1]{附录B 关键页面截图汇总与回填说明}{appendix:b}
 \addcontentsline{toc}{chapter}{附录B\hspace{1ex}关键页面截图汇总与回填说明}
 
 \subsection*{核心截图项目说明}
-本附录用于汇总后续需要插入论文正文的关键页面截图，并统一说明每张图的用途、获取位置和建议截图内容。图5-1系统总体架构图与图5-2数据库实体关系图属于手工绘制图，不作为页面截图处理。
+本附录用于汇总后续需要插入论文正文的关键页面截图，并统一说明每张图的用途、获取位置和建议截图内容。图5-1系统总体架构图与图5-2数据库实体关系图属于结构示意图，不作为页面截图处理；当前可直接保留 LaTeX 版本，后续若需要也可再替换为手工重绘版本。
 
 （1）图5-3 题库管理页面截图：使用管理员账号访问 \texttt{/dashboard/usermanagement/problem} 页面后获取，用于说明题库维护能力。
 
@@ -60,7 +60,7 @@ docker compose -f compose.local.yml up -d --build
 （7）图6-1 AI 分析结果展示截图：可与图5-7来源相近，但应更强调测试分析与结果说明视角。
 
 \subsection*{截图整理原则}
-建议统一使用中文界面、桌面端布局和接近 100\% 的浏览器缩放比例，尽量裁去无关标签页、系统通知和多余空白区域。若页面信息过长，可采用局部截图方式，但应保证图题与正文描述之间具有明确对应关系。
+建议统一使用中文界面、Google Chrome 桌面端布局和接近 100\% 的浏览器缩放比例，尽量裁去无关标签页、系统通知和多余空白区域。若页面信息过长，可采用局部截图方式，但应保证图题与正文描述之间具有明确对应关系。
 
 截图完成后，建议按图号统一命名文件，并在正文对应位置替换现有 [TODO] 说明。若后续需要在答辩中集中展示，也可在本附录末尾补充“图号—文件名—用途”对照表。
 
@@ -95,9 +95,9 @@ AI 分析逻辑位于 \texttt{src/app/actions/analyze-code.ts} 中的 \texttt{an
 
 \begin{verbatim}
 cd /Users/kali/Public/Github/judge4c
-npx prisma generate
-npx prisma db seed
-npm run build
+bunx prisma generate
+bunx prisma db seed
+bun run build
 \end{verbatim}
 
 统一测试题目为“1000 两数之和”，统一测试语言为 C，统一做法为保留系统默认模板，只替换 \texttt{twoSum(...)} 函数。
