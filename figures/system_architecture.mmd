@@ -1,0 +1,79 @@
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Times New Roman",
+    "fontSize": "20px",
+    "primaryColor": "#ffffff",
+    "primaryBorderColor": "#333333",
+    "primaryTextColor": "#111111",
+    "lineColor": "#666666"
+  },
+  "flowchart": {
+    "curve": "linear",
+    "nodeSpacing": 40,
+    "rankSpacing": 55
+  }
+}}%%
+flowchart TB
+
+  subgraph L1["表现层"]
+    direction LR
+    UI1["题目集与题目详情"]
+    UI2["代码编辑器与统一工作区"]
+    UI3["提交记录、结果详情与 AI 反馈面板"]
+  end
+
+  subgraph L2["业务服务层"]
+    direction LR
+    S1["Next.js 页面路由与 Server Actions"]
+    S2["认证鉴权、题目读取与模板加载服务"]
+    S3["提交受理、状态回写与结果聚合服务"]
+  end
+
+  subgraph L34[""]
+    direction LR
+
+    subgraph L3["评测执行层"]
+      direction LR
+      J1["Submission 创建与任务初始化"]
+      J2["编译命令生成与日志截断"]
+      J3["Docker 容器执行与用例判定"]
+    end
+
+    subgraph L4["AI 辅助层"]
+      direction TB
+      A1["异步分析任务、DeepSeek 调用与结构化反馈生成"]
+    end
+  end
+
+  subgraph L5["数据层"]
+    direction LR
+    D1["Prisma 数据访问层<br/>User / Problem / Submission / Testcase / CodeAnalysis"]
+    D2["PostgreSQL 持久化存储<br/>及 Docker 本地 / 远程运行环境配置"]
+  end
+
+  UI1 --> S1
+  UI2 --> S2
+  UI3 --> S3
+
+  S1 --> J1
+  S2 --> J2
+  S3 --> J3
+  S3 --> A1
+
+  J1 --> D1
+  J2 --> D1
+  J3 --> D2
+  A1 --> D2
+
+  J3 -. 判题完成后触发 .-> A1
+
+  style L1 fill:#eef0ff,stroke:#333333,stroke-width:1px
+  style L2 fill:#eef9fb,stroke:#333333,stroke-width:1px
+  style L3 fill:#fff3e8,stroke:#333333,stroke-width:1px
+  style L4 fill:#e8fae6,stroke:#333333,stroke-width:1px
+  style L5 fill:#f4f4f4,stroke:#333333,stroke-width:1px
+  style L34 fill:transparent,stroke:transparent
+
+  classDef node fill:#ffffff,stroke:#333333,stroke-width:1px,color:#111111;
+  class UI1,UI2,UI3,S1,S2,S3,J1,J2,J3,A1,D1,D2 node;
