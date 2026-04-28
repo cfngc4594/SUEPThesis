@@ -1,108 +1,13 @@
 \begin{appendices}
 
-\section{系统部署与运行说明}
-\pdfbookmark[1]{附录A 系统部署与运行说明}{appendix:a}
-\addcontentsline{toc}{chapter}{附录A\hspace{1ex}系统部署与运行说明}
-
-\subsection*{部署环境准备}
-本系统基于 Next.js、Prisma、PostgreSQL 与 Docker 构建，适用于高校程序设计教学场景下的本地演示与功能验证。部署前应确保操作系统已经安装 Node.js、Bun、PostgreSQL 与 Docker，并保证判题所需的 \texttt{gcc:latest} 镜像可正常使用。若采用本地 Docker 模式，系统通过 \texttt{/var/run/docker.sock} 调用宿主机 Docker；若采用远程 Docker 模式，则需要额外配置远程地址、协议和证书路径。
-
-\subsection*{环境变量配置}
-项目根目录为 \texttt{/Users/kali/Public/Github/judge4c}。首次部署时可参考 \texttt{.env.example} 复制生成 \texttt{.env} 文件，并按实际环境填写数据库、认证和 AI 服务所需的关键参数。
-
-\begin{verbatim}
-cd /Users/kali/Public/Github/judge4c
-cp .env.example .env
-\end{verbatim}
-
-至少需要确认 \texttt{DATABASE\_URL}、\texttt{AUTH\_SECRET}、\texttt{AUTH\_URL}、\texttt{DEEPSEEK\_API\_KEY} 等变量可用；若使用远程 Docker，还需补充 \texttt{DOCKER\_HOST\_MODE}、\texttt{DOCKER\_REMOTE\_PROTOCOL}、\texttt{DOCKER\_REMOTE\_HOST}、\texttt{DOCKER\_REMOTE\_PORT} 及相关证书路径。为了保证论文与项目演示的一致性，后续答辩时建议固定使用同一套环境配置。
-
-\subsection*{数据库与种子数据初始化}
-在完成环境变量配置后，可执行数据库迁移、Prisma 客户端生成与种子数据导入操作。当前项目已经提供迁移文件与种子脚本，可直接完成基础题目与配置数据的初始化。
-
-\begin{verbatim}
-bunx prisma migrate deploy
-bunx prisma generate
-bunx prisma db seed
-\end{verbatim}
-
-\subsection*{启动与运行验证}
-开发环境可在安装依赖后通过 \texttt{bun run dev} 启动，生产可构建性可通过 \texttt{bun run build} 验证。若采用 Docker Compose 方式，也可以直接启动整套本地环境。应用默认访问地址为 \texttt{http://localhost:3000}。
-
-\begin{verbatim}
-bun install
-bun run build
-bun run dev
-docker compose -f compose.local.yml up -d --build
-\end{verbatim}
-
-当前工程已经完成 \texttt{bun run build} 通过的验证，可作为系统具备运行可行性的直接依据；对应的本地运行界面与开发环境状态见正文图5-11。
-
-\section{关键页面与正文图号对应说明}
-\pdfbookmark[1]{附录B 关键页面与正文图号对应说明}{appendix:b}
-\addcontentsline{toc}{chapter}{附录B\hspace{1ex}关键页面与正文图号对应说明}
-
-\subsection*{关键页面对应关系}
-本附录对正文中已经使用的主要界面截图进行补充说明，便于答辩展示时进行图号核对与页面定位。图5-1系统总体架构图与图5-2数据库实体关系图属于结构示意图，不作为页面截图处理。
-
-（1）图5-3 题库管理页面截图：对应后台题库管理页面，用于说明平台具备题目录入、列表展示与维护能力。
-
-（2）图5-4 题目详情页面截图：对应题目“1000 两数之和”的详情页，用于说明题面、难度、时间限制、内存限制与模板代码等基础信息展示能力。
-
-（3）图5-5 代码提交与判题结果页面截图：对应一次完整代码提交后的结果展示页面，用于说明提交入口、判题状态回写与结果展示效果。
-
-（4）图5-6 提交记录页面截图：对应提交记录列表页面，用于说明平台能够同时呈现 AC、CE、WA、RE、TLE 等多种判题状态。
-
-（5）图5-7 AI 辅助反馈页面截图：对应提交详情中的 AI 分析区域，用于说明复杂度、评分和反馈文本等结构化结果展示能力。
-
-（6）图5-8 首页移动端展示截图：对应平台公共首页的移动端界面，用于说明首页在小屏设备上的可访问性。
-
-（7）图5-9 首页功能导览区域截图：对应首页功能导览卡片区域，用于说明平台在移动端友好、运行环境与编辑体验方面的公共入口展示。
-
-（8）图5-10 题目求解主界面截图：对应统一工作区式题目页面，用于说明题面、编辑器、提交记录和 AI 面板的协同组织方式。
-
-（9）图5-11 系统本地运行与开发环境截图：对应本地部署验证场景，用于说明数据库、依赖安装、迁移、种子数据和开发服务启动后的运行状态。
-
-（10）图6-1 题目列表页访问结果截图：对应题目集列表页，用于说明学生侧题目浏览入口可以正常访问。
-
-（11）图6-2 答案错误代码的 AI 分析结果截图：对应错误答案样例的 AI 反馈结果，用于说明模型能够解释逻辑错误来源。
-
-（12）图6-3 可读性较差代码的 AI 分析结果截图：对应可读性较差但可通过样例的 AI 反馈结果，用于说明模型能够识别代码风格与可读性问题。
-
-\subsection*{页面整理说明}
-正文截图统一基于 Google Chrome 获取，并围绕题目浏览、代码提交、结果查看、AI 反馈与多终端界面等核心场景组织。页面截图在整理时尽量裁去无关标签页、系统通知和多余空白区域，以保证图题、正文描述和界面证据之间保持明确对应关系。
-
-上述图号说明可作为正文图片与答辩演示画面之间的索引，便于在展示时快速定位对应页面。
-
-\section{关键接口与核心代码片段说明}
-\pdfbookmark[1]{附录C 关键接口与核心代码片段说明}{appendix:c}
-\addcontentsline{toc}{chapter}{附录C\hspace{1ex}关键接口与核心代码片段说明}
-
-\subsection*{判题入口接口说明}
-判题入口对应源码文件为 \texttt{src/app/actions/judge.ts}，其中 \texttt{judge(problemId, language, content)} 方法负责用户身份校验、题目与测试用例检查、Docker 配置检查、Submission 创建、源代码归档上传、编译调用、运行调用以及容器清理等完整流程，是平台客观评测链路的核心入口。该接口将用户请求转换为受控判题任务，并统一管理提交状态的初始流转。
-
-\subsection*{编译接口说明}
-编译逻辑位于 \texttt{src/app/actions/compile.ts} 中的 \texttt{compile(...)} 方法。该方法根据语言类型生成对应的编译命令，将提交状态更新为编译中或编译错误/成功，并在失败时把编译器输出写回 \texttt{Submission.message}。这样，系统既能判断代码是否可以继续执行，也能为后续错误展示和 AI 辅助分析保留必要上下文。
-
-\subsection*{运行与结果判定接口说明}
-运行逻辑位于 \texttt{src/app/actions/run.ts} 中的 \texttt{run(...)} 方法。该方法按测试用例顺序为程序提供输入数据，并结合标准输出比对、退出状态、时间限制和内存限制判断最终结果，将提交分别归类为 AC、WA、RE、TLE、MLE 等状态。判题过程中同时记录 testcase 级别的结果信息，为提交详情展示和后续测试分析提供数据依据。
-
-\subsection*{AI 辅助分析接口说明}
-AI 分析逻辑位于 \texttt{src/app/actions/analyze-code.ts} 中的 \texttt{analyzeCode(...)} 方法。该方法在提交创建后异步执行，先创建 \texttt{CodeAnalysis} 记录，再通过 DeepSeek 模型对代码的时间复杂度、空间复杂度、整体质量、风格、可读性、效率和正确性进行结构化分析，并把结果写回数据库。由于分析任务与主判题流程分离，因此即使 AI 模块异常，也不会影响客观判题结果的生成。
-
-\subsection*{核心数据模型说明}
-核心数据模型定义于 \texttt{prisma/schema.prisma}。其中，\texttt{Problem} 负责题目基础约束，\texttt{ProblemLocalization} 负责多语言题面内容，\texttt{Template} 负责语言模板代码，\texttt{Submission} 负责提交记录及状态流转，\texttt{Testcase} 与 \texttt{TestcaseInput} 负责标准测试数据，\texttt{TestcaseResult} 负责用例级结果记录，\texttt{CodeAnalysis} 负责 AI 辅助分析结果存储。这一模型划分使题目组织、判题执行与分析反馈之间能够通过统一的数据结构协同工作。
-
 \section{判题测试样例代码}
-\pdfbookmark[1]{附录D 判题测试样例代码}{appendix:d}
-\addcontentsline{toc}{chapter}{附录D\hspace{1ex}判题测试样例代码}
+\pdfbookmark[1]{附录1 判题测试样例代码}{appendix:testcases}
 
-本附录汇总第六章判题正确性测试与 AI 辅助反馈测试所使用的 C 语言样例代码。相关样例支撑了图5-5、图5-6、图5-7、图6-2、图6-3以及表6-3、表6-4、表6-5中的实验说明。
+本附录汇总第六章判题正确性测试与 AI 辅助反馈测试所使用的 C 语言样例代码。相关样例支撑了图5-5、图5-6、图5-7、图6-1、图6-3以及表6-3、表6-4、表6-5中的实验说明。
 
-实验执行前可先通过以下命令确认环境配置与构建状态：
+本文实验通过以下命令完成依赖生成、数据初始化与构建校验：
 
 \begin{verbatim}
-cd /Users/kali/Public/Github/judge4c
 bunx prisma generate
 bunx prisma db seed
 bun run build
