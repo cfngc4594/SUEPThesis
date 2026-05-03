@@ -80,13 +80,13 @@ AI 服务 & DeepSeek（通过 @ai-sdk/openai-compatible 接入） \\
 \bottomrule
 \endfoot
 F-01 & 用户注册/登录 & 系统正常运行，数据库连接正常 & 输入正确账号密码并完成登录 & 成功进入系统首页或题目集页面 & 通过，可正常注册并进入 \path{/dashboard} 页面 & 本次测试使用邮箱账号注册，首个账号自动获得管理员权限 \\
-F-02 & 题目列表加载 & 系统中已存在已发布题目 & 打开 \path{/problemset} 页面 & 正常显示题号、标题、难度等信息 & 通过，可正常显示题号、标题与难度信息 & 对应图6-2 \\
-F-03 & 题目详情展示 & 题目“1000 两数之和”已存在 & 点击题目进入详情页 & 正常显示题面、时限、内存限制与模板代码 & 通过，题面、示例、约束与编辑器模板代码均可正常显示 & 对应图5-4 \\
-F-04 & 模板代码加载 & 题目已配置 C / C++ 模板 & 进入题目页并切换语言 & 自动加载对应语言模板代码 & 通过，进入题目页后可自动加载 C 语言默认模板 & 重点验证默认语言模板加载，见图5-4、图5-8 \\
-F-05 & 代码提交 & 用户已登录且题目可访问 & 输入代码并点击提交 & 生成一条新的提交记录并进入判题流程 & 通过，可正常生成提交记录并返回判题状态 & 对应图5-5 \\
-F-06 & 提交记录查看 & 至少已完成一次代码提交 & 打开提交记录面板或提交详情面板 & 可查看提交时间、状态与部分详情信息 & 通过，可查看 AC、CE、WA、RE、TLE 等多种状态记录 & 对应图5-6 \\
-F-07 & AI 辅助反馈展示 & 提交已触发 AI 分析且分析完成 & 打开 AI 面板或提交详情中的分析区域 & 可查看复杂度、评分和反馈文本 & 通过，可正常展示雷达图、总分、复杂度与反馈文本 & 对应图5-7、图6-1、图6-3 \\
-F-08 & 题库管理页访问 & 管理员账号可正常登录 & 访问后台题库管理页面 & 题目管理列表可正常展示 & 通过，后台题目列表与操作按钮可正常显示 & 对应图5-3 \\
+F-02 & 题目列表加载 & 系统中已存在已发布题目 & 打开 \path{/problemset} 页面 & 正常显示题号、标题、难度等信息 & 通过，可正常显示题号、标题与难度信息 & 见图~\ref{fig:ch6-problemlist} \\
+F-03 & 题目详情展示 & 题目“1000 两数之和”已存在 & 点击题目进入详情页 & 正常显示题面、时限、内存限制与模板代码 & 通过，题面、示例、约束与编辑器模板代码均可正常显示 & 见图~\ref{fig:ch5-problem-detail} \\
+F-04 & 模板代码加载 & 题目已配置 C / C++ 模板 & 进入题目页并切换语言 & 自动加载对应语言模板代码 & 通过，进入题目页后可自动加载 C 语言默认模板 & 重点验证默认语言模板加载，见图~\ref{fig:ch5-problem-detail} 及图~\ref{fig:problem-workspace} \\
+F-05 & 代码提交 & 用户已登录且题目可访问 & 输入代码并点击提交 & 生成一条新的提交记录并进入判题流程 & 通过，可正常生成提交记录并返回判题状态 & 见图~\ref{fig:ch5-submit} \\
+F-06 & 提交记录查看 & 至少已完成一次代码提交 & 打开提交记录面板或提交详情面板 & 可查看提交时间、状态与部分详情信息 & 通过，可查看 AC、CE、WA、RE、TLE 等多种状态记录 & 见图~\ref{fig:ch5-submission-list} \\
+F-07 & AI 辅助反馈展示 & 提交已触发 AI 分析且分析完成 & 打开 AI 面板或提交详情中的分析区域 & 可查看复杂度、评分和反馈文本 & 通过，可正常展示雷达图、总分、复杂度与反馈文本 & 见图~\ref{fig:ch5-ai-feedback}、图~\ref{fig:ch6-ai-wa} 及图~\ref{fig:ch6-ai-readability} \\
+F-08 & 题库管理页访问 & 管理员账号可正常登录 & 访问后台题库管理页面 & 题目管理列表可正常展示 & 通过，后台题目列表与操作按钮可正常显示 & 见图~\ref{fig:ch5-problem-admin} \\
 F-09 & 语言服务连通与诊断 & 本地 Compose 已启动 \texttt{lsp-c}/\texttt{lsp-cpp} 且健康检查通过 & 打开题目页，观察工具栏 LSP 状态；在编辑器中引入明显语法/类型错误 & 状态指示进入就绪态，错误处出现诊断标记并可随修改更新 & 通过，行为与第5章图~\ref{fig:ch5-lsp-arch} 所述链路一致；界面级截图可另补 \\
 F-10 & AI 聊天 SSE 流式响应 & 已配置 \texttt{AI\_API\_KEY}、\allowbreak\texttt{AI\_BASE\_URL}、\allowbreak\texttt{AI\_MODEL} 三项环境变量 & 打开题目页 Bot 面板提交一条问题，同时在 Network 面板观察 \texttt{/api/chat} 请求 & 响应在生成途中即开始向页面增量写入文本，请求保持 pending 直至流结束，与图~\ref{fig:ch5-ai-sse-seq} 时序一致 & 通过，回复呈现“逐段浮现”而非整段一次性出现 \\
 \bottomrule
@@ -97,6 +97,7 @@ F-10 & AI 聊天 SSE 流式响应 & 已配置 \texttt{AI\_API\_KEY}、\allowbrea
   \centering
   \includegraphics[width=0.78\textwidth]{images/fig6-2.png}
   \caption{题目列表页截图}
+  \label{fig:ch6-problemlist}
 \end{figure}
 
 从当前工程实现和构建验证情况来看，平台的主线功能已经基本齐备。用户注册登录、题目访问、模板加载、代码提交、结果查看和 AI 反馈展示等操作都能够正常完成。与此同时，项目也通过了 \texttt{bun run lint} 与 \texttt{bun run build} 校验，说明当前代码版本在静态检查和生产构建层面不存在明显阻塞问题。结合上述功能测试用例与构建结果，可以认为平台核心主链路已经具备稳定可演示的能力。
@@ -113,7 +114,7 @@ F-10 & AI 聊天 SSE 流式响应 & 已配置 \texttt{AI\_API\_KEY}、\allowbrea
 \setlength{\LTright}{0pt}
 \setlength{\tabcolsep}{3pt}
 \begin{longtable}{P{0.07\textwidth}P{0.10\textwidth}P{0.17\textwidth}P{0.10\textwidth}P{0.11\textwidth}P{0.09\textwidth}P{0.16\textwidth}}
-\caption{判题正确性测试结果}\\
+\caption{判题正确性测试结果}\label{tab:ch6-judge-correctness}\\
 \toprule
 \textbf{编号} & \textbf{测试类型} & \textbf{输入代码特征} & \textbf{预期状态} & \textbf{实际状态} & \textbf{是否通过} & \textbf{备注} \\
 \midrule
@@ -124,11 +125,11 @@ F-10 & AI 聊天 SSE 流式响应 & 已配置 \texttt{AI\_API\_KEY}、\allowbrea
 \endhead
 \bottomrule
 \endfoot
-J-01 & 正确程序 & 可通过全部测试用例 & AC & AC & 通过 & 标准正确样例可稳定通过，对应图5-5 \\
-J-02 & 编译错误程序 & 存在缺少分号等语法错误 & CE & CE & 通过 & 系统可识别语法错误并返回编译错误状态，对应图5-6 \\
-J-03 & 答案错误程序 & 可编译运行但输出与标准答案不一致 & WA & WA & 通过 & 系统可基于标准输出比对识别错误答案，对应图5-6 \\
-J-04 & 运行错误程序 & 程序运行过程中异常退出 & RE & RE & 通过 & 使用 \texttt{abort()} 样例可稳定复现运行时错误，对应图5-6 \\
-J-05 & 时间超限程序 & 程序进入死循环或长期无响应 & TLE & TLE & 通过 & 系统能够对死循环样例触发时间限制控制，对应图5-6 \\
+J-01 & 正确程序 & 可通过全部测试用例 & AC & AC & 通过 & 标准正确样例可稳定通过，见图~\ref{fig:ch5-submit} \\
+J-02 & 编译错误程序 & 存在缺少分号等语法错误 & CE & CE & 通过 & 系统可识别语法错误并返回编译错误状态，见图~\ref{fig:ch5-submission-list} \\
+J-03 & 答案错误程序 & 可编译运行但输出与标准答案不一致 & WA & WA & 通过 & 系统可基于标准输出比对识别错误答案，见图~\ref{fig:ch5-submission-list} \\
+J-04 & 运行错误程序 & 程序运行过程中异常退出 & RE & RE & 通过 & 使用 \texttt{abort()} 样例可稳定复现运行时错误，见图~\ref{fig:ch5-submission-list} \\
+J-05 & 时间超限程序 & 程序进入死循环或长期无响应 & TLE & TLE & 通过 & 系统能够对死循环样例触发时间限制控制，见图~\ref{fig:ch5-submission-list} \\
 \bottomrule
 \end{longtable}
 \endgroup
@@ -139,7 +140,7 @@ J-05 & 时间超限程序 & 程序进入死循环或长期无响应 & TLE & TLE 
 \setlength{\LTright}{0pt}
 \setlength{\tabcolsep}{3pt}
 \begin{longtable}{P{0.07\textwidth}P{0.11\textwidth}P{0.18\textwidth}P{0.20\textwidth}P{0.25\textwidth}}
-\caption{不同错误类型样例与系统返回状态}\\
+\caption{不同错误类型样例与系统返回状态}\label{tab:ch6-error-samples}\\
 \toprule
 \textbf{编号} & \textbf{错误类型} & \textbf{构造方式} & \textbf{页面表现} & \textbf{结果说明} \\
 \midrule
@@ -174,7 +175,7 @@ AI 辅助反馈效果分析选择了若干具有代表性的提交样例，例�
 \setlength{\LTright}{0pt}
 \setlength{\tabcolsep}{3pt}
 \begin{longtable}{P{0.07\textwidth}P{0.13\textwidth}P{0.16\textwidth}P{0.17\textwidth}P{0.16\textwidth}P{0.12\textwidth}}
-\caption{AI 辅助反馈效果示例}\\
+\caption{AI 辅助反馈效果示例}\label{tab:ch6-ai-feedback-cases}\\
 \toprule
 \textbf{编号} & \textbf{提交场景} & \textbf{AI 输出重点} & \textbf{预期评价维度} & \textbf{实际情况} & \textbf{展示价值} \\
 \midrule
@@ -186,9 +187,9 @@ AI 辅助反馈效果分析选择了若干具有代表性的提交样例，例�
 \bottomrule
 \endfoot
 A-01 & 编译错误代码 & 错误原因解释、可能出错位置、修正方向提示 & 反馈是否指出语法问题且不过度直接代写 & 已指出 \texttt{twoSum} 尚未实现完整逻辑，并明确提示第 10 行缺少分号导致编译失败 & 可用，能够较准确解释语法层面的错误来源 \\
-A-02 & 答案错误代码 & 逻辑问题提示、边界条件提醒、思路偏差分析 & 反馈是否能够指出导致 WA 的主要原因 & 已指出程序始终返回 \texttt{[0,0]}，与输入无关，因而在逻辑上根本不正确 & 可用，对应图6-1，可用于展示逻辑错误解释能力 \\
-A-03 & 低效正确代码 & 时间复杂度、空间复杂度、优化建议 & 反馈是否能够识别复杂度并给出合理优化方向 & 已识别时间复杂度为 \(O(N^2)\)、空间复杂度为 \(O(1)\)，并建议使用哈希表优化到线性时间 & 可用，对应图5-7，适合体现 AI 的学习支持价值 \\
-A-04 & 可读性较差代码 & 命名、结构、可读性与代码风格建议 & 反馈是否能够从结构化角度提出改进意见 & 已指出单行过密、单字母变量、缺少空格和命名不清等问题，并给出代码风格 30 分、可读性 35 分的评价 & 可用，对应图6-3，可用于展示 AI 对代码可读性问题的识别能力 \\
+A-02 & 答案错误代码 & 逻辑问题提示、边界条件提醒、思路偏差分析 & 反馈是否能够指出导致 WA 的主要原因 & 已指出程序始终返回 \texttt{[0,0]}，与输入无关，因而在逻辑上根本不正确 & 可用，见图~\ref{fig:ch6-ai-wa}，可用于展示逻辑错误解释能力 \\
+A-03 & 低效正确代码 & 时间复杂度、空间复杂度、优化建议 & 反馈是否能够识别复杂度并给出合理优化方向 & 已识别时间复杂度为 \(O(N^2)\)、空间复杂度为 \(O(1)\)，并建议使用哈希表优化到线性时间 & 可用，见图~\ref{fig:ch5-ai-feedback}，适合体现 AI 的学习支持价值 \\
+A-04 & 可读性较差代码 & 命名、结构、可读性与代码风格建议 & 反馈是否能够从结构化角度提出改进意见 & 已指出单行过密、单字母变量、缺少空格和命名不清等问题，并给出代码风格 30 分、可读性 35 分的评价 & 可用，见图~\ref{fig:ch6-ai-readability}，可用于展示 AI 对代码可读性问题的识别能力 \\
 \bottomrule
 \end{longtable}
 \endgroup
@@ -197,12 +198,14 @@ A-04 & 可读性较差代码 & 命名、结构、可读性与代码风格建议 
   \centering
   \includegraphics[width=0.72\textwidth]{images/fig6-1.png}
   \caption{答案错误代码的 AI 分析结果截图}
+  \label{fig:ch6-ai-wa}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.72\textwidth]{images/fig6-3.png}
   \caption{可读性较差代码的 AI 分析结果截图}
+  \label{fig:ch6-ai-readability}
 \end{figure}
 
 AI 辅助反馈部分作为客观判题之后的附加分析存在。从样例结果来看，AI 对编译错误、答案错误、低效正确代码和可读性较差代码都能给出与提交情形基本一致的解释和建议，说明该模块已经能够起到一定的学习支持作用，但它并不替代判题结果本身。

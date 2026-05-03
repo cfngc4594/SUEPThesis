@@ -8,6 +8,7 @@
   \centering
   \resizebox{\linewidth}{!}{\input{figures/system_architecture.tex}}
   \caption{系统总体架构图}
+  \label{fig:ch5-system-arch}
 \end{figure}
 
 本章结合当前工程实现，对平台核心模块进行分层说明，主要对应数据模型、题库组织、提交流转、容器化判题、AI 分析和前端工作区等部分。这样安排的目的，是让论文中的描述能够和实际代码结构较好对应起来。
@@ -102,6 +103,7 @@ Auth.js 配置中，\texttt{callbacks.jwt} 在检测到 \texttt{account.provider
   \centering
   \resizebox{\linewidth}{!}{\input{figures/core_er_diagram.tex}}
   \caption{数据库实体关系图}
+  \label{fig:ch5-er}
 \end{figure}
 
 当前系统用户模型以 User 实体为核心，记录用户名称、邮箱、密码、头像和角色等信息。角色字段用于区分管理员、教师与普通学生等不同访问主体，并结合认证模块完成登录后的身份识别。对于平台主链路而言，角色机制主要影响题目维护权限和后台访问范围，而不改变学生提交判题的核心流程。
@@ -217,12 +219,14 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
   \centering
   \includegraphics[width=\linewidth]{images/fig5-3.png}
   \caption{题库管理页面截图}
+  \label{fig:ch5-problem-admin}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\linewidth]{images/fig5-4.png}
   \caption{题目详情页面截图}
+  \label{fig:ch5-problem-detail}
 \end{figure}
 
 从功能边界上看，题库管理模块的主要任务是为判题主链路提供准确、完整和可维护的数据来源，而不是在论文中展开复杂后台交互细节。因此，本文只描述与题目内容组织、模板代码和测试数据直接相关的实现。
@@ -241,12 +245,14 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
   \centering
   \includegraphics[width=\linewidth]{images/fig5-5.png}
   \caption{代码提交与判题结果页面截图}
+  \label{fig:ch5-submit}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\linewidth]{images/fig5-6.png}
   \caption{提交记录页面截图}
+  \label{fig:ch5-submission-list}
 \end{figure}
 
 \subsection{提交受理与状态流转}
@@ -512,9 +518,10 @@ AI 子系统的失败兜底策略可归纳为三层。第一层是\textbf{对判
   \centering
   \includegraphics[width=0.88\linewidth]{images/fig5-7.png}
   \caption{AI 辅助反馈页面截图}
+  \label{fig:ch5-ai-feedback}
 \end{figure}
 
-从实际运行结果看，平台已能够展示 AI 分析卡片、雷达图、综合评分和文本反馈。图5-7对应“结果正确但效率较低”的暴力枚举提交，系统给出了 \(O(N^2)\) 的时间复杂度、\(O(1)\) 的空间复杂度以及 65 分的综合评分，并在反馈中建议使用哈希表等方式优化时间复杂度。这一结果同时体现了上文 Tool Calling 强约束（评分必为 0--100 整数、复杂度必为枚举值之一）和提示词中评分规则的实际效果。
+从实际运行结果看，平台已能够展示 AI 分析卡片、雷达图、综合评分和文本反馈。图~\ref{fig:ch5-ai-feedback} 对应“结果正确但效率较低”的暴力枚举提交，系统给出了 \(O(N^2)\) 的时间复杂度、\(O(1)\) 的空间复杂度以及 65 分的综合评分，并在反馈中建议使用哈希表等方式优化时间复杂度。这一结果同时体现了上文 Tool Calling 强约束（评分必为 0--100 整数、复杂度必为枚举值之一）和提示词中评分规则的实际效果。
 
 \section{一体化工作区与交互}
 
