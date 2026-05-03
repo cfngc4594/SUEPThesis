@@ -1,21 +1,23 @@
 \begin{abstract}
 
-传统的在线编程评测平台一般能够实现自动判题，然而在教学场景之中，还是存在一些不足之处，像是反馈信息太过简略、执行环境隔离不够明晰，并且在集中提交场景下扩展性存在局限。鉴于这些问题，本文依据高校程序设计课程的实际需求，设计并达成了一个借助云原生与 AI 辅助的一体化在线编程评测平台。
+在线编程评测平台已经成为高校程序设计课程中常用的辅助工具，能够代替教师完成代码的编译、运行和结果判定。但在真实的教学场景下，多数现有平台只会返回 AC、WA、CE 等简短状态，学生看完往往依旧不清楚代码错在哪里、为什么会错。围绕这一问题，本文结合本科程序设计课程的实际使用情况，设计并实现了一个引入容器化执行与 AI 辅助反馈的在线编程评测平台。
 
-本文工作的重点不是单纯实现提交之后给出结果这一基础闭环，而是在保证客观判题稳定性的前提下，进一步增强平台的工程可用性与学习支持能力。系统以自动判题为主线，完成了题库管理、题目展示、模板代码加载、在线提交、容器化编译运行、测试用例判定、提交记录展示和 AI 辅助分析等核心功能。
+平台采用 Next.js 与 Bun 搭建前后端，使用 PostgreSQL 配合 Prisma 管理题目和提交数据，编译运行环节交给独立的 Docker 容器处理。用户提交的代码会在受控的容器中完成编译、执行和测试用例比对，并通过资源限制与网络禁用相互隔离，避免相互影响或污染宿主机。前端编辑器基于 Monaco 实现，通过 Language Server Protocol 与容器内的 Clangd 对接，使学生在提交之前就能看到补全和诊断信息，不必依靠反复提交、再读编译输出的方式来定位问题。
 
-在判题执行层，平台采用受控 Docker 环境运行用户代码，并结合资源限制、网络禁用和状态流转机制，保证运行环境的一致性与安全性。在反馈层，AI 模块则放在客观判题之后异步运行，结合提交代码与判题结果，对时间复杂度、空间复杂度、代码风格、可读性和效率等内容进行分析，生成结构化反馈与改进建议，且不参与最终判题结论的生成，由此确保学习支持能力以可控、可追溯的方式叠加在客观评测主链路之上。
+AI 模块放在客观判题完成之后异步运行。系统会把提交的代码连同判题结果一起送给大模型，由模型从时间复杂度、空间复杂度、代码风格、可读性等维度给出分析，并以雷达图和文字反馈的形式呈现在提交详情页。AI 不参与判分，只作为客观判题之后的解释性补充。
 
-结合系统实现、构建验证和典型测试结果可以看出，本文所实现的平台已经能够较完整地覆盖程序设计练习、实验训练和课程作业中的主要评测流程，同时在传统自动判题基础上补充了一定的解释性反馈能力。对于本科毕业设计而言，该方案较好体现了容器化判题、工程化组织和 AI 学习辅助的综合应用价值。
+围绕平台原型，本文完成了功能测试、判题正确性测试以及 AI 反馈效果分析。测试结果显示，平台对 AC、CE、WA、RE、TLE 五种判题状态都能给出与预期一致的返回，AI 模块对编译错误、答案错误、低效正确代码和风格较差代码也能给出与提交情形基本吻合的解释和建议。整体来看，本文实现的平台已经能够支撑一次完整的练习闭环，可以作为本科程序设计课程的教学辅助工具使用。
 
 \end{abstract}
 
 \begin{abstractEn}
 
-Conventional online programming evaluation platforms are generally capable of carrying out automatic judging. Nevertheless, within teaching contexts they still exhibit certain shortcomings, such as overly brief feedback messages, insufficiently clear isolation of execution environments, and limited scalability when submissions are concentrated. In light of these issues, drawing on the actual needs of programming courses in universities, this paper designs and accomplishes an integrated online programming evaluation platform that leverages cloud-native technology together with AI assistance.
+Online programming judges are widely used in undergraduate programming courses, where they take care of compiling, executing and checking student code on behalf of the instructor. In practice, however, most existing platforms only return short verdicts such as AC, WA or CE, leaving students unsure of where their code went wrong or why. Motivated by this gap, this thesis designs and implements an online judge platform that combines containerised execution with AI-assisted feedback for undergraduate programming courses.
 
-The work of this paper is not limited to building a basic submission-and-judging pipeline. Instead, it focuses on improving both engineering reliability and learning support while keeping objective judging as the core of the system. The platform includes problem management, problem presentation, template loading, online submission, containerized compilation and execution, testcase-based judging, submission history display, and AI-assisted analysis. User programs are compiled and executed in controlled Docker environments with resource limits, network isolation, and explicit status transitions, so that the judging process remains consistent and secure. The AI module runs asynchronously after objective judging and analyzes time complexity, space complexity, code style, readability, and efficiency to produce structured feedback and improvement suggestions.
+The platform is built on Next.js and Bun, with PostgreSQL and Prisma handling problems and submission data, while compilation and execution are delegated to dedicated Docker containers. Submitted code runs inside controlled containers that apply resource limits and disable network access, so that submissions cannot interfere with each other or with the host. The front-end editor is based on Monaco and is wired to in-container Clangd through the Language Server Protocol, which lets students see completions and diagnostics before submitting, instead of relying on repeated submissions and lengthy compiler output to locate issues.
 
-Implementation results, build verification, and representative test cases show that the platform can support the main workflows of programming exercises, laboratory training, and course assignments. For an undergraduate graduation project, the system demonstrates the practical value of combining containerized judging, engineering-oriented platform design, and AI-assisted learning support in a unified solution.
+The AI module runs asynchronously, after the objective judging stage has finished. The system sends the submitted code together with the verdict to a large language model, which produces an analysis along several dimensions, including time complexity, space complexity, code style and readability. The result is shown on the submission page as a radar chart together with textual feedback. The AI module never participates in scoring; it only provides an explanatory layer on top of the standard verdict.
+
+A round of functional tests, judging-correctness tests and a case-based analysis of the AI feedback was carried out on the prototype. The platform produced the expected verdict for all five judging states under test (AC, CE, WA, RE, TLE), and the AI module gave reasonable explanations and suggestions for compilation errors, wrong answers, slow but correct solutions and code with poor readability. Overall, the implemented system can support a complete practice loop and can serve as an auxiliary tool for undergraduate programming courses.
 
 \end{abstractEn}
