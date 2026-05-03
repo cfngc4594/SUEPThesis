@@ -712,8 +712,6 @@ Diff 对比视图 & 当 \texttt{optimizedCode} 非空时启用，在普通与 Di
 
 本轮已完成本地端到端构建验证：\texttt{docker compose -f compose.local.yml up -d postgres} 启动后数据库容器进入 \texttt{healthy} 状态；\texttt{bun install} 完成依赖安装并触发 Prisma Client 生成；\texttt{bunx prisma migrate deploy} 应用全部 10 个数据库迁移；\texttt{bunx prisma db seed} 完成种子数据初始化；\texttt{bun run build} 生产构建通过，构建输出中可见 \path{/problemset}、\path{/problems/[problemId]}、\path{/dashboard} 以及后台管理相关核心路由均已成功参与构建。图~\ref{fig:local-dev-env} 给出了运行界面与开发终端状态，可作为本地演示环境正常工作的直接证据。
 
-\todoboxfigure{远程 Docker 判题节点连接截图}{[TODO] 请补充远程 Docker 主机（或云服务器）上运行判题相关的截图：例如 \texttt{docker context ls}、远程守护进程地址配置界面，或判题容器在远程节点创建成功的日志截图，用于佐证“执行位置解耦”。}
-
 \section{实现现状与后续演进说明}
 
 本节区分当前仓库已落地行为与第4章设计中的演进项，便于读者理解平台在原型阶段已经稳定实现的能力，以及哪些方向已为后续工作预留接口、但当前并未以独立服务或消息队列形式出现。
