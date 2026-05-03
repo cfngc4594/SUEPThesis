@@ -87,7 +87,7 @@ F-05 & 代码提交 & 用户已登录且题目可访问 & 输入代码并点击�
 F-06 & 提交记录查看 & 至少已完成一次代码提交 & 打开提交记录面板或提交详情面板 & 可查看提交时间、状态与部分详情信息 & 通过，可查看 AC、CE、WA、RE、TLE 等多种状态记录 & 见图~\ref{fig:ch5-submission-list} \\
 F-07 & AI 辅助反馈展示 & 提交已触发 AI 分析且分析完成 & 打开 AI 面板或提交详情中的分析区域 & 可查看复杂度、评分和反馈文本 & 通过，可正常展示雷达图、总分、复杂度与反馈文本 & 见图~\ref{fig:ch5-ai-feedback}、图~\ref{fig:ch6-ai-wa} 及图~\ref{fig:ch6-ai-readability} \\
 F-08 & 题库管理页访问 & 管理员账号可正常登录 & 访问后台题库管理页面 & 题目管理列表可正常展示 & 通过，后台题目列表与操作按钮可正常显示 & 见图~\ref{fig:ch5-problem-admin} \\
-F-09 & 语言服务连通与诊断 & 本地 Compose 已启动 \texttt{lsp-c}/\texttt{lsp-cpp} 且健康检查通过 & 打开题目页，观察工具栏 LSP 状态；在编辑器中引入明显语法/类型错误 & 状态指示进入就绪态，错误处出现诊断标记并可随修改更新 & 通过，行为与第5章图~\ref{fig:ch5-lsp-arch} 所述链路一致；界面级截图可另补 \\
+F-09 & 语言服务连通与诊断 & 本地 Compose 已启动 \texttt{lsp-c}/\texttt{lsp-cpp} 且健康检查通过 & 打开题目页，观察工具栏 LSP 状态；在编辑器中引入明显语法/类型错误 & 状态指示进入就绪态，错误处出现诊断标记并可随修改更新 & 通过，行为与第5章图~\ref{fig:ch5-lsp-arch} 所述链路一致，界面级证据见图~\ref{fig:ch6-lsp} \\
 F-10 & AI 聊天 SSE 流式响应 & 已配置 \texttt{AI\_API\_KEY}、\allowbreak\texttt{AI\_BASE\_URL}、\allowbreak\texttt{AI\_MODEL} 三项环境变量 & 打开题目页 Bot 面板提交一条问题，同时在 Network 面板观察 \texttt{/api/chat} 请求 & 响应在生成途中即开始向页面增量写入文本，请求保持 pending 直至流结束，与图~\ref{fig:ch5-ai-sse-seq} 时序一致 & 通过，回复呈现“逐段浮现”而非整段一次性出现 \\
 \bottomrule
 \end{longtable}
@@ -236,12 +236,17 @@ I-02 & 多语言切换 & 通过 & 页面可在英文与中文环境间切换，�
 I-03 & 深浅色主题 & 通过 & 深色主题下页面容器、工作区和代码展示区域保持统一视觉风格，无明显割裂。 & 图~\ref{fig:dark-theme-workspace} \\
 I-04 & 编辑器 AI 工具栏 & 通过 & 优化代码后可切换到 Diff 视图观察前后改动，原代码未被静默覆盖。 & 图~\ref{fig:diff-view} \\
 I-05 & 机器人问答面板 & 通过 & AI 助手能够结合当前代码回答复杂度问题，回答内容与当前任务上下文一致。 & 图~\ref{fig:ai-chat-panel} \\
-I-06 & 语言服务（LSP）体验 & 通过 & 工具栏可观察连接状态；在 Clangd 就绪条件下，故意错误可触发编辑器诊断标记，减少仅依赖提交后 \texttt{CE} 信息的定位成本。 & [TODO] 同屏截图：LSP 指示灯与诊断标记 \\
+I-06 & 语言服务（LSP）体验 & 通过 & 工具栏可观察连接状态；在 Clangd 就绪条件下，故意错误可触发编辑器诊断标记，减少仅依赖提交后 \texttt{CE} 信息的定位成本。 & 图~\ref{fig:ch6-lsp} \\
 \bottomrule
 \end{longtable}
 \endgroup
 
-\todoboxfigure{LSP 连接指示与诊断标记截图}{[TODO] 请补充题目页工具栏 LSP 状态与编辑器诊断波浪线同屏截图，用于与表~\ref{tab:ch6-interaction} 中 I-06、功能测试 F-09 及第5章 Monaco+LSP 专节叙述对照。}
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.92\linewidth]{images/fig6-9.png}
+  \caption{LSP 连接指示与编辑器诊断标记同屏截图}
+  \label{fig:ch6-lsp}
+\end{figure}
 
 \begin{figure}[htbp]
   \centering

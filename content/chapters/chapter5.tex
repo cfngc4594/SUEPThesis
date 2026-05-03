@@ -58,7 +58,7 @@ AI 分析模块 & \texttt{analyze-code.ts} & 在判题主链路外异步创建 C
 
 \path{src/lib/auth.ts} 中注册的 \texttt{providers} 包括三类：其一，\texttt{Credentials}，用于邮箱 + 密码登录，\texttt{authorize} 回调内使用 \texttt{authSchema}（\texttt{zod}）解析入参，以 \texttt{Prisma} 按邮箱查询用户并以 \texttt{bcrypt.compare} 校验口令散列；校验失败时返回 \texttt{null}。其二，\texttt{GitHub}，启用 \texttt{allowDangerousEmailAccountLinking} 以便与已有邮箱账户做提供方关联（具体风险与适用场景见 Auth.js 文档说明）\cite{authjsdocs}。其三，\texttt{Google}，配置方式与 GitHub 同属 OAuth 提供方，登录页同样渲染为第三方按钮；下文以 GitHub 为主描述 OAuth 主流程，Google 与之同构。
 
-自定义登录页路径为 \texttt{pages.signIn = "/sign-in"}，对应 \path{src/app/(auth)/sign-in/page.tsx}。该页面上方为 \texttt{CredentialsSignInForm}（\path{src/components/credentials-sign-in-form.tsx}），下方为分隔线后遍历 \texttt{providerMap} 生成的 OAuth 按钮表单；\texttt{providerMap} 由 \texttt{providers} 派生并\textbf{过滤掉} \texttt{credentials}，避免与上方表单重复\cite{authjsdocs}。注册流程由 \path{src/app/actions/auth.ts} 中的 \texttt{signUpWithCredentials} 完成：校验邮箱未被占用后，以 \texttt{bcrypt.hash}（盐轮数 10）写入密码散列并创建用户；若当前为全库首位用户，则将角色更新为管理员（与 \texttt{createUser} 事件中“首用户赋 \texttt{ADMIN}”逻辑一致）。
+自定义登录页路径为 \texttt{pages.signIn = "/sign-in"}，对应 \path{src/app/(auth)/sign-in/page.tsx}。该页面上方为 \texttt{CredentialsSignInForm}（\path{src/components/credentials-sign-in-form.tsx}），下方为分隔线后遍历 \texttt{providerMap} 生成的 OAuth 按钮表单；\texttt{providerMap} 由 \texttt{providers} 派生并\textbf{过滤掉} \texttt{credentials}，避免与上方表单重复\cite{authjsdocs}。注册流程由 \path{src/app/actions/auth.ts} 中的 \texttt{signUpWithCredentials} 完成：校验邮箱未被占用后，以 \texttt{bcrypt.hash}（盐轮数 10）写入密码散列并创建用户；若当前为全库首位用户，则将角色更新为管理员（与 \texttt{createUser} 事件中“首用户赋 \texttt{ADMIN}”逻辑一致）。该登录页的 UI 形态见图~\ref{fig:ch5-signin}。
 
 \subsection{邮箱凭据登录与数据库会话}
 
@@ -68,7 +68,7 @@ Auth.js 配置中，\texttt{callbacks.jwt} 在检测到 \texttt{account.provider
 
 \subsection{GitHub OAuth 登录与默认编码分支}
 
-用户点击 GitHub 按钮时，登录页内联 Server Action 调用 \texttt{signIn("github", \{ redirectTo: callbackUrl \})}。浏览器随后跳转至 GitHub 授权端点，用户同意授权后回调本站的 \texttt{/api/auth/callback/github}，最终仍由 \texttt{handlers} 统一处理。与凭据分支不同，OAuth 成功后的 \texttt{jwt.encode} 走 \texttt{next-auth/jwt} 的默认 \texttt{encode}，即\textbf{不进入}上述 \texttt{createSession} 分支；账户绑定与 \texttt{linkAccount} 等事件在 \texttt{events} 钩子中记录结构化日志，便于排查账号合并问题\cite{authjsdocs}。
+用户点击 GitHub 按钮时，登录页内联 Server Action 调用 \texttt{signIn("github", \{ redirectTo: callbackUrl \})}。浏览器随后跳转至 GitHub 授权端点，用户在 GitHub 站点完成授权确认（如图~\ref{fig:ch5-oauth} 所示）后回调本站的 \texttt{/api/auth/callback/github}，最终仍由 \texttt{handlers} 统一处理。与凭据分支不同，OAuth 成功后的 \texttt{jwt.encode} 走 \texttt{next-auth/jwt} 的默认 \texttt{encode}，即\textbf{不进入}上述 \texttt{createSession} 分支；账户绑定与 \texttt{linkAccount} 等事件在 \texttt{events} 钩子中记录结构化日志，便于排查账号合并问题\cite{authjsdocs}。
 
 \subsection{受保护业务与判题入口的衔接}
 
@@ -93,9 +93,19 @@ Auth.js 配置中，\texttt{callbacks.jwt} 在检测到 \texttt{account.provider
   \label{fig:ch5-auth-overview}
 \end{figure}
 
-\todoboxfigure{自定义登录页（邮箱 + GitHub 按钮）截图}{[TODO] 截取 \texttt{/sign-in} 页面全宽图：可见邮箱密码表单、分隔线「或」、GitHub（及若启用则 Google）按钮，用于与图~\ref{fig:ch5-auth-overview} 对照。}
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.78\linewidth]{images/fig5-12.png}
+  \caption{自定义登录页（邮箱密码表单与 GitHub OAuth 按钮）截图}
+  \label{fig:ch5-signin}
+\end{figure}
 
-\todoboxfigure{GitHub OAuth 授权确认页截图}{[TODO] 可选：截取浏览器在 github.com 上的授权确认步骤（注意打码或遮挡 Client ID 等敏感信息），用于说明 OAuth 重定向环节。}
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.78\linewidth]{images/fig5-13.png}
+  \caption{GitHub OAuth 授权确认页截图（敏感字段已遮蔽）}
+  \label{fig:ch5-oauth}
+\end{figure}
 
 \section{核心数据模型}
 
