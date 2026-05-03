@@ -1,10 +1,6 @@
 \chapter{平台核心功能实现}
 
-\section{本章说明}
-
-结合当前项目实现情况，平台采用全栈 Web 应用方式组织前后端能力：前端负责题目展示、代码编辑、提交记录查看与 AI 反馈交互，后端负责题目读取、提交入库、判题调度、容器调用和分析结果持久化。虽然项目部署为统一工程，但在代码职责上已经形成了相对清晰的模块划分。
-
-本章重点说明与论文主题最直接相关的核心实现，即题目读取、代码提交、容器化判题、AI 辅助分析以及前端工作区。对于教师管理、学生管理和复杂统计面板等配套页面，虽然工程中也有一定实现，但本文不将其作为主成果展开。
+结合当前项目实现情况，平台采用全栈 Web 应用方式组织前后端能力：前端负责题目展示、代码编辑、提交记录查看与 AI 反馈交互，后端负责题目读取、提交入库、判题调度、容器调用和分析结果持久化。虽然项目部署为统一工程，但在代码职责上已经形成了相对清晰的模块划分。本章重点说明与论文主题最直接相关的核心实现，即题目读取、代码提交、容器化判题、AI 辅助分析以及前端工作区；对于教师管理、学生管理和复杂统计面板等配套页面，虽然工程中也有一定实现，但本文不将其作为主成果展开。
 
 \section{整体实现结构}
 
@@ -355,13 +351,9 @@ export const model = aiProvider(modelId);
 
 上下文聊天的难点不在于“能否得到模型回复”，而在于如何把回复\textbf{增量}送达浏览器并\textbf{增量}渲染，从而避免“按下回车后等十几秒再一次性出现整段文字”的体验落差\cite{aisdk2024docs,aisdkreact2024docs}。本节按“为什么要流式—怎么从模型拿到流—怎么把流回传给浏览器—浏览器侧如何消费流”四步说明实现。
 
-\subsubsection{为何需要流式：交互延迟与首字节时延}
+\noindent\textbf{（1）为何需要流式：交互延迟与首字节时延。}大语言模型的端到端推理延迟通常远大于普通 HTTP 请求：即使在不太长的上下文下，整段答案的产生时间常达数秒至十几秒。若服务端等模型生成完毕再一次性返回，则浏览器在此期间只能呈现“加载中”动画，用户感受到的“首字节时延”（Time To First Token）即等于完整生成时间。流式响应把首字节时延压缩到“模型返回第一个 token 的时刻”，并把后续 token 持续推送到前端，使学生在阅读已到达的句子时模型仍在生成后续内容\cite{aisdk2024docs}。这种“边生成边阅读”的模式与传统 OJ 平台“点完提交才出结果”的同步交互截然不同，是当前对话型 AI 应用的事实标准\cite{rfc8895eventsource,whatwgeventsource}。
 
-大语言模型的端到端推理延迟通常远大于普通 HTTP 请求：即使在不太长的上下文下，整段答案的产生时间常达数秒至十几秒。若服务端等模型生成完毕再一次性返回，则浏览器在此期间只能呈现“加载中”动画，用户感受到的“首字节时延”（Time To First Token）即等于完整生成时间。流式响应把首字节时延压缩到“模型返回第一个 token 的时刻”，并把后续 token 持续推送到前端，使学生在阅读已到达的句子时模型仍在生成后续内容\cite{aisdk2024docs}。这种“边生成边阅读”的模式与传统 OJ 平台“点完提交才出结果”的同步交互截然不同，是当前对话型 AI 应用的事实标准\cite{rfc8895eventsource,whatwgeventsource}。
-
-\subsubsection{服务端：\texttt{streamText} 与 Data Stream 响应}
-
-\path{src/app/api/chat/route.ts} 是整个聊天能力的入口，其本体非常精简：
+\noindent\textbf{（2）服务端：\texttt{streamText} 与 Data Stream 响应。}\path{src/app/api/chat/route.ts} 是整个聊天能力的入口，其本体非常精简：
 
 \begin{minted}[fontsize=\scriptsize, breaklines]{typescript}
 import { streamText } from "ai";
@@ -379,9 +371,7 @@ export async function POST(req: Request) {
 
 需要严谨说明的是，本文所称“SSE 风格”流式响应在协议层与传统 \texttt{text/event-stream} 标准 SSE 并不完全等同：标准 SSE 由 WHATWG 在 HTML 规范中定义，要求响应 \texttt{Content-Type: text/event-stream}、按 \texttt{event:}/\texttt{data:} 行格式封装，并由浏览器原生 \texttt{EventSource} 接口解析\cite{whatwgeventsource,rfc8895eventsource}。Vercel AI SDK 的 Data Stream Protocol 借鉴了相同的“一行一事件、按行解析”思想，但出于可携带二进制安全字符串、支持 POST 请求体以及兼容流式 fetch 的考虑，使用 \texttt{Content-Type: text/plain; charset=utf-8} 与自定义前缀字符（如 \texttt{0:}、\texttt{2:}、\texttt{e:}、\texttt{f:}）区分文本块、工具调用、错误与完成等帧类型，并依靠 HTTP/1.1 chunked transfer encoding 实现分块推送\cite{aisdk2024docs,rfc7230chunked}。两者的共同特征是“在单条长连接上把一次响应拆为多次增量帧”，因此在工程语境下统称为“SSE 风格的增量流式响应”是合适的；但读者应注意它并非通过浏览器 \texttt{EventSource} 接口消费，而是由 SDK 在 fetch 之上自行解析。
 
-\subsubsection{客户端：\texttt{useChat} 钩子的增量渲染}
-
-浏览器侧的 \path{src/features/problems/bot/components/form.tsx} 没有直接处理 SSE 帧，而是依赖 \texttt{@ai-sdk/react} 的 \texttt{useChat} 钩子\cite{aisdkreact2024docs}：
+\noindent\textbf{（3）客户端：\texttt{useChat} 钩子的增量渲染。}浏览器侧的 \path{src/features/problems/bot/components/form.tsx} 没有直接处理 SSE 帧，而是依赖 \texttt{@ai-sdk/react} 的 \texttt{useChat} 钩子\cite{aisdkreact2024docs}：
 
 \begin{minted}[fontsize=\scriptsize, breaklines]{typescript}
 const { messages, input, handleInputChange, setMessages, handleSubmit } =
@@ -405,9 +395,7 @@ const { messages, input, handleInputChange, setMessages, handleSubmit } =
   \label{fig:ch5-ai-sse-seq}
 \end{figure}
 
-\subsubsection{对比：为何编辑期辅助不走流式}
-
-需要补充澄清的是，\textbf{并非所有 AI 调用都适合做成流式}。编辑期的复杂度分析与代码优化按钮被设计为一次性返回 JSON：一方面，按钮的产出是“两个枚举字段”或“一份完整代码”，没有“逐字阅读”需求；另一方面，前端需要拿到整段输出后再做 \texttt{JSON.parse} 与 \texttt{zod} 校验，否则中途状态既无意义也容易引起渲染抖动。因此这两类入口在 \path{analyze.ts} 中使用 \texttt{generateText} 而非 \texttt{streamText}，体现了“按交互形态而非按术语流行度选择 API”的工程原则。
+\noindent\textbf{（4）对比：为何编辑期辅助不走流式。}需要补充澄清的是，\textbf{并非所有 AI 调用都适合做成流式}。编辑期的复杂度分析与代码优化按钮被设计为一次性返回 JSON：一方面，按钮的产出是“两个枚举字段”或“一份完整代码”，没有“逐字阅读”需求；另一方面，前端需要拿到整段输出后再做 \texttt{JSON.parse} 与 \texttt{zod} 校验，否则中途状态既无意义也容易引起渲染抖动。因此这两类入口在 \path{analyze.ts} 中使用 \texttt{generateText} 而非 \texttt{streamText}，体现了“按交互形态而非按术语流行度选择 API”的工程原则。
 
 \subsection{提交后异步分析与 Tool Calling 强约束}
 
@@ -420,13 +408,9 @@ const { messages, input, handleInputChange, setMessages, handleSubmit } =
   \label{fig:ch5-ai-analyze-pipeline}
 \end{figure}
 
-\subsubsection{异步状态机与判题主链路解耦}
+\noindent\textbf{（1）异步状态机与判题主链路解耦。}\texttt{analyzeCode} 进入函数体后立即创建一条 \texttt{status="QUEUED"} 的 \texttt{CodeAnalysis} 记录，再在 \texttt{try} 块内推进到 \texttt{PROCESSING}，调用模型，并在工具回调内完成 \texttt{COMPLETED} 写入；任何一步异常都会被 \texttt{catch} 捕获并把状态置为 \texttt{FAILED}（图~\ref{fig:ch5-ai-analyze-pipeline}）。这种“先建占位记录、再推进状态”的模式具有两个直接好处：第一，前端无需轮询时使用复杂的“记录是否存在”逻辑，统一查同一行的 \texttt{status} 字段即可；第二，即便模型返回超时或调用方进程被回收，最终落库的状态仍能反映“启动过但未完成”，便于教师与运维人员排查。在与判题主链路的关系上，分析任务由 Server Action 异步触发但不阻塞判题返回，因此即便 AI 服务故障，学生仍可拿到 \texttt{AC}/\texttt{WA} 等标准结果，仅看不到分析卡片。
 
-\texttt{analyzeCode} 进入函数体后立即创建一条 \texttt{status="QUEUED"} 的 \texttt{CodeAnalysis} 记录，再在 \texttt{try} 块内推进到 \texttt{PROCESSING}，调用模型，并在工具回调内完成 \texttt{COMPLETED} 写入；任何一步异常都会被 \texttt{catch} 捕获并把状态置为 \texttt{FAILED}（图~\ref{fig:ch5-ai-analyze-pipeline}）。这种“先建占位记录、再推进状态”的模式具有两个直接好处：第一，前端无需轮询时使用复杂的“记录是否存在”逻辑，统一查同一行的 \texttt{status} 字段即可；第二，即便模型返回超时或调用方进程被回收，最终落库的状态仍能反映“启动过但未完成”，便于教师与运维人员排查。在与判题主链路的关系上，分析任务由 Server Action 异步触发但不阻塞判题返回，因此即便 AI 服务故障，学生仍可拿到 \texttt{AC}/\texttt{WA} 等标准结果，仅看不到分析卡片。
-
-\subsubsection{Tool Calling 强约束输出}
-
-为避免“让模型用 JSON 自由文本回答然后我们写正则解析”这一脆弱方案，本实现采用 Vercel AI SDK 的 \texttt{tool} 与 \texttt{toolChoice} 联合机制\cite{aisdk2024docs}：
+\noindent\textbf{（2）Tool Calling 强约束输出。}为避免“让模型用 JSON 自由文本回答然后我们写正则解析”这一脆弱方案，本实现采用 Vercel AI SDK 的 \texttt{tool} 与 \texttt{toolChoice} 联合机制\cite{aisdk2024docs}：
 
 \begin{minted}[fontsize=\scriptsize, breaklines]{typescript}
 await generateText({
@@ -611,19 +595,13 @@ AI 子系统的失败兜底策略可归纳为三层。第一层是\textbf{对判
 
 许多传统在线评测系统仍采用轻量文本框或简化编辑器，常见能力止步于关键字着色与基础缩进。对入门学生而言，这类编辑器在“拼写错误、漏写分号、括号不匹配、类型不匹配”等高频问题上缺乏即时反馈，学生往往只能依赖编译器输出的大量信息自行定位；在题目规模变大或模板宏较多时，这种反馈链路会显著拉长试错周期。工程实现策略是将浏览器端编辑体验尽量对齐本地 IDE：以微软 Monaco Editor 作为代码编辑内核\cite{monacoeditorrepo}，并通过 Language Server Protocol（LSP）与独立的 C/C++ 语言服务器通信，使补全、诊断、悬停提示、签名帮助等能力以标准化方式进入 Web 工作区\cite{lsp2024spec,monacolanguageclientrepo}。
 
-\subsubsection{前端依赖与编辑器基础能力}
+\noindent\textbf{（1）前端依赖与编辑器基础能力。}题目求解页的实现栈以 \texttt{@monaco-editor/react} 与 \texttt{monaco-editor} 为核心，并配合 \texttt{monaco-languageclient}、\texttt{vscode-languageclient} 与 \texttt{vscode-ws-jsonrpc} 将 LSP 的 JSON-RPC 消息映射到浏览器 \texttt{WebSocket} 传输层\cite{monacolanguageclientrepo}。编辑器默认选项在 \path{src/config/editor.ts} 中集中配置，启用 ligatures、括号配对着色、缩进参考线、粘性滚动、平滑滚动与自动换行等特性，使长时间读码与改码的视觉负担更低。主题方面，工程使用 Shiki 高亮器并通过 \texttt{@shikijs/monaco} 将配色注册到 Monaco，从而使代码区与站点深浅色主题保持一致（与图~\ref{fig:dark-theme-workspace} 所示工作区在观感上保持一致）。
 
-题目求解页的实现栈以 \texttt{@monaco-editor/react} 与 \texttt{monaco-editor} 为核心，并配合 \texttt{monaco-languageclient}、\texttt{vscode-languageclient} 与 \texttt{vscode-ws-jsonrpc} 将 LSP 的 JSON-RPC 消息映射到浏览器 \texttt{WebSocket} 传输层\cite{monacolanguageclientrepo}。编辑器默认选项在 \path{src/config/editor.ts} 中集中配置，启用 ligatures、括号配对着色、缩进参考线、粘性滚动、平滑滚动与自动换行等特性，使长时间读码与改码的视觉负担更低。主题方面，工程使用 Shiki 高亮器并通过 \texttt{@shikijs/monaco} 将配色注册到 Monaco，从而使代码区与站点深浅色主题保持一致（与图~\ref{fig:dark-theme-workspace} 所示工作区在观感上保持一致）。
-
-\subsubsection{语言服务端点注入与连接建立}
-
-语言服务的连接参数并不写死在前端常量中，而是由服务端在渲染题目页时从数据库读取并注入。具体而言，\path{src/features/problems/code/components/content.tsx} 在服务端执行 \texttt{prisma.languageServerConfig.findMany()}，将返回的 \texttt{LanguageServerConfig} 列表传入 \texttt{ProblemEditor}，再下发到 \texttt{CoreEditor}\cite{prismadocs}。数据模型在 \texttt{schema.prisma} 中以语言为主键记录 \texttt{protocol}、\texttt{hostname}、\texttt{port} 与 \texttt{path} 等字段，使同一套前端代码可以在本地 Compose、内网部署或公网域名等不同环境下复用，只需调整种子数据或数据库配置即可。
+\noindent\textbf{（2）语言服务端点注入与连接建立。}语言服务的连接参数并不写死在前端常量中，而是由服务端在渲染题目页时从数据库读取并注入。具体而言，\path{src/features/problems/code/components/content.tsx} 在服务端执行 \texttt{prisma.languageServerConfig.findMany()}，将返回的 \texttt{LanguageServerConfig} 列表传入 \texttt{ProblemEditor}，再下发到 \texttt{CoreEditor}\cite{prismadocs}。数据模型在 \texttt{schema.prisma} 中以语言为主键记录 \texttt{protocol}、\texttt{hostname}、\texttt{port} 与 \texttt{path} 等字段，使同一套前端代码可以在本地 Compose、内网部署或公网域名等不同环境下复用，只需调整种子数据或数据库配置即可。
 
 在浏览器侧，\path{src/components/core-editor.tsx} 根据当前语言选择匹配的 \texttt{LanguageServerConfig}，拼接出 \texttt{WebSocket} URL 并建立连接；连接建立后创建 \texttt{MonacoLanguageClient} 并启动，使 Monaco 与语言服务器进入同一套 LSP 会话。编辑器挂载完成后才发起连接，卸载时停止 client，避免页面切换造成资源泄漏。工具栏中的 \texttt{LSP} 状态指示（\path{lsp-connection-indicator.tsx}）通过观察 \texttt{WebSocket} 的就绪状态给出可视化反馈，让学生明确“当前是否具备语言级诊断能力”，这与仅依赖提交后判题反馈的体验有本质差异。
 
-\subsubsection{容器化语言服务与 Compose 编排}
-
-语言服务器本身同样以容器方式运行，便于与主服务生命周期对齐。工程 \texttt{compose} 配置中除 \texttt{judge4c} 与 \texttt{postgres} 外，还包含 \texttt{lsp-c} 与 \texttt{lsp-cpp} 两个服务镜像：二者基于 \path{docker/lsp/clangd} 构建，在容器内通过 \texttt{jsonrpc-ws-proxy} 将 \texttt{WebSocket} JSON-RPC 转发到 \texttt{clangd} 进程（\texttt{servers.yml} 中声明 \texttt{/usr/bin/clangd} 及后台索引参数）。主服务通过 \texttt{depends\_on} 等待语言服务健康检查通过后再启动，从而降低“页面已打开但语言服务尚未就绪”的偶发体验问题。该编排方式也与前文“判题执行与辅助能力均应尽量容器化、可替换”的总体思路一致\cite{dockerdocs,kubernetesdocs}。
+\noindent\textbf{（3）容器化语言服务与 Compose 编排。}语言服务器本身同样以容器方式运行，便于与主服务生命周期对齐。工程 \texttt{compose} 配置中除 \texttt{judge4c} 与 \texttt{postgres} 外，还包含 \texttt{lsp-c} 与 \texttt{lsp-cpp} 两个服务镜像：二者基于 \path{docker/lsp/clangd} 构建，在容器内通过 \texttt{jsonrpc-ws-proxy} 将 \texttt{WebSocket} JSON-RPC 转发到 \texttt{clangd} 进程（\texttt{servers.yml} 中声明 \texttt{/usr/bin/clangd} 及后台索引参数）。主服务通过 \texttt{depends\_on} 等待语言服务健康检查通过后再启动，从而降低“页面已打开但语言服务尚未就绪”的偶发体验问题。该编排方式也与前文“判题执行与辅助能力均应尽量容器化、可替换”的总体思路一致\cite{dockerdocs,kubernetesdocs}。
 
 \begin{figure}[htbp]
   \centering
@@ -632,9 +610,7 @@ AI 子系统的失败兜底策略可归纳为三层。第一层是\textbf{对判
   \label{fig:ch5-lsp-arch}
 \end{figure}
 
-\subsubsection{与传统 OJ 编辑器的对比价值}
-
-结合上述实现，平台在“写码阶段”能够提供的价值可以概括为三点：其一，\textbf{错误前移}——在提交前即可通过诊断标记暴露大量语法与类型问题，减少无意义提交；其二，\textbf{反馈可解释}——诊断与补全携带位置与符号信息，比单纯依赖编译器 stderr 更接近课堂讲解的表达习惯；其三，\textbf{工程可运维}——语言服务与业务站点解耦，可按语言横向扩容或替换版本，而不必随每次业务发版耦合发布。对本科教学场景而言，这类能力并不替代判题主链路的客观性，但能显著降低学生在模板代码附近“卡死”的概率，从而把更多认知资源留给算法与测试设计本身。
+\noindent\textbf{（4）与传统 OJ 编辑器的对比价值。}结合上述实现，平台在“写码阶段”能够提供的价值可以概括为三点：其一，\textbf{错误前移}——在提交前即可通过诊断标记暴露大量语法与类型问题，减少无意义提交；其二，\textbf{反馈可解释}——诊断与补全携带位置与符号信息，比单纯依赖编译器 stderr 更接近课堂讲解的表达习惯；其三，\textbf{工程可运维}——语言服务与业务站点解耦，可按语言横向扩容或替换版本，而不必随每次业务发版耦合发布。对本科教学场景而言，这类能力并不替代判题主链路的客观性，但能显著降低学生在模板代码附近“卡死”的概率，从而把更多认知资源留给算法与测试设计本身。
 
 \subsection{响应式布局与多终端适配}
 
@@ -721,23 +697,15 @@ Diff 对比视图 & 当 \texttt{optimizedCode} 非空时启用，在普通与 Di
 
 \todoboxfigure{远程 Docker 判题节点连接截图}{[TODO] 请补充远程 Docker 主机（或云服务器）上运行判题相关的截图：例如 \texttt{docker context ls}、远程守护进程地址配置界面，或判题容器在远程节点创建成功的日志截图，用于佐证“执行位置解耦”。}
 
-\section{工程预留与主线实现对齐说明}
+\section{实现现状与后续演进说明}
 
-本节区分\textbf{当前仓库已落地行为}与\textbf{第4章设计中的演进项}；后者在 \texttt{judge4c} 中尚未以独立服务或消息队列形式出现。
+本节区分当前仓库已落地行为与第4章设计中的演进项，便于读者理解平台在原型阶段已经稳定实现的能力，以及哪些方向已为后续工作预留接口、但当前并未以独立服务或消息队列形式出现。
 
-\subsection{判题主链路仍为同步 Server Action}
-
-判题入口 \texttt{judge}（\path{src/app/actions/judge.ts}）在一次 Server Action 调用内依次完成环境准备、\texttt{compile}、\texttt{run} 与结果写回，并在末尾调用 \texttt{revalidatePath} 使前端获得更新。这与第4章所述“提交入队、后台 worker、WebSocket 推送判题进度”的异步路线相比，属于\textbf{请求内同步判题}实现：实现链路较短、调试路径清晰，但在高峰负载下判题耗时仍占用 Web 进程时间片。Prisma 枚举 \texttt{Status} 中已包含 \texttt{PD}、\texttt{QD} 等可表达排队语义的取值，数据层为后续接入队列预留了字段空间，但\textbf{主线流程当前并未启动独立队列消费者}。
-
-\subsection{辅助链路的异步：AI 分析}
+判题入口 \texttt{judge}（\path{src/app/actions/judge.ts}）在一次 Server Action 调用内依次完成环境准备、\texttt{compile}、\texttt{run} 与结果写回，并在末尾调用 \texttt{revalidatePath} 使前端获得更新。这与第4章所述“提交入队、后台 worker、WebSocket 推送判题进度”的异步路线相比，属于\textbf{请求内同步判题}实现：实现链路较短、调试路径清晰，但在高峰负载下判题耗时仍占用 Web 进程时间片。Prisma 枚举 \texttt{Status} 中已包含 \texttt{PD}、\texttt{QD} 等可表达排队语义的取值，数据层为后续接入队列预留了字段空间，但主线流程当前并未启动独立队列消费者。
 
 与主判题不同，\texttt{CodeAnalysis} 使用独立状态枚举（如 \texttt{QUEUED}、\texttt{PROCESSING} 等），由 \texttt{analyzeCode} 在客观判题完成后异步触发，体现“主结果确定、解释层后置”的拆分方式。仓库中的 WebSocket 现用于语言服务（LSP），而非判题状态推送；若未来按第4章设计接入判题事件通道，应避免与 LSP 长连接混在同一套路由语义中。
 
-\subsection{课程化与多模式判题}
-
-第4章给出了课程、作业及课程级运行环境配置的实体建议，但当前 \texttt{schema.prisma} 尚未出现 \texttt{Course}/\texttt{Assignment} 等表，相关能力属于\textbf{设计预留}。ACM/ICPC、OI 等判题模式及额外中间实体（如按场次拆表的 Judge/JudgeRun）亦未在本仓库实现；若后续需要，应在数据模型与判题调度层单独立项扩展，而不宜在本文中写成“已具备”。
-
-现有题库、\texttt{Submission}、\texttt{TestcaseResult} 与 \texttt{CodeAnalysis} 已形成可运行的数据闭环，可作为课程化扩展时挂载作业与成绩归因的基础；Docker 与远程 Docker 配置则支撑“执行环境与 Web 分层”的延续演进。
+第4章给出了课程、作业及课程级运行环境配置的实体建议，但当前 \texttt{schema.prisma} 尚未出现 \texttt{Course}/\texttt{Assignment} 等表，相关能力属于设计预留。ACM/ICPC、OI 等判题模式及额外中间实体（如按场次拆表的 Judge/JudgeRun）亦未在本仓库实现；若后续需要，应在数据模型与判题调度层单独立项扩展，而不宜在本文中写成“已具备”。现有题库、\texttt{Submission}、\texttt{TestcaseResult} 与 \texttt{CodeAnalysis} 已形成可运行的数据闭环，可作为课程化扩展时挂载作业与成绩归因的基础；Docker 与远程 Docker 配置则支撑“执行环境与 Web 分层”的延续演进。
 
 \section{本章小结}
 
