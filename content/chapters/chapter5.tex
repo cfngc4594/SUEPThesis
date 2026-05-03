@@ -350,16 +350,7 @@ AI 辅助子系统并非主判题链路的一部分，而是围绕“客观判�
 
 \subsection{模型抽象层与 OpenAI 兼容 Provider 接入}
 
-平台未硬编码任何具体厂商 SDK，而是通过 Vercel AI SDK 的 Provider 抽象统一访问远端模型\cite{aisdk2024docs}。\path{src/lib/ai.ts} 仅暴露一个 \texttt{model} 对象供其他模块复用：
-
-\begin{minted}[fontsize=\scriptsize, breaklines]{typescript}
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-const apiKey  = getRequiredEnv("AI_API_KEY");
-const baseURL = getRequiredEnv("AI_BASE_URL");
-export const modelId  = getRequiredEnv("AI_MODEL");
-export const aiProvider = createOpenAICompatible({ name: "ai", apiKey, baseURL });
-export const model = aiProvider(modelId);
-\end{minted}
+平台未硬编码任何具体厂商 SDK，而是通过 Vercel AI SDK 的 Provider 抽象统一访问远端模型\cite{aisdk2024docs}。具体而言，\path{src/lib/ai.ts} 通过 \texttt{createOpenAICompatible} 工厂方法，结合从环境变量读取的 \texttt{AI\_API\_KEY}、\texttt{AI\_BASE\_URL} 与 \texttt{AI\_MODEL} 三项配置，构造出一个可复用的 \texttt{model} 对象，供 AI 子系统其余模块统一调用。
 
 这种组织方式有两层工程价值。其一，\textbf{切换模型不改业务代码}：DeepSeek、月之暗面、智谱清言以及 OpenAI 自身都暴露 OpenAI 兼容 \texttt{/v1/chat/completions} 端点，将 \texttt{AI\_BASE\_URL} 与 \texttt{AI\_MODEL} 改成对应值即可在不重构上层逻辑的前提下切换\cite{deepseek2024api}；本文阶段实测使用 DeepSeek 服务。其二，\textbf{敏感信息不进入版本库}：\texttt{API\_KEY} 通过 \texttt{getRequiredEnv} 从进程环境变量读取，缺失时直接抛错，避免“开发期忘填生产期才崩溃”的延后失败\cite{owasp2021top10}。从架构视角看，模型层对应图~\ref{fig:ch5-ai-arch} 中部的统一模型层，所有调用方仅依赖 \texttt{generateText}/\texttt{streamText}/\texttt{tool} 这三个 SDK 顶层函数，与具体 Provider 解耦。
 
@@ -369,36 +360,13 @@ export const model = aiProvider(modelId);
 
 \noindent\textbf{（1）为何需要流式：交互延迟与首字节时延。}大语言模型的端到端推理延迟通常远大于普通 HTTP 请求：即使在不太长的上下文下，整段答案的产生时间常达数秒至十几秒。若服务端等模型生成完毕再一次性返回，则浏览器在此期间只能呈现“加载中”动画，用户感受到的“首字节时延”（Time To First Token）即等于完整生成时间。流式响应把首字节时延压缩到“模型返回第一个 token 的时刻”，并把后续 token 持续推送到前端，使学生在阅读已到达的句子时模型仍在生成后续内容\cite{aisdk2024docs}。这种“边生成边阅读”的模式与传统 OJ 平台“点完提交才出结果”的同步交互截然不同，是当前对话型 AI 应用的事实标准\cite{rfc8895eventsource,whatwgeventsource}。
 
-\noindent\textbf{（2）服务端：\texttt{streamText} 与 Data Stream 响应。}\path{src/app/api/chat/route.ts} 是整个聊天能力的入口，其本体非常精简：
+\noindent\textbf{（2）服务端：\texttt{streamText} 与 Data Stream 响应。}\path{src/app/api/chat/route.ts} 是整个聊天能力的入口，其本体非常精简：在 \texttt{POST} 处理函数内解析请求体中的对话历史 \texttt{messages}，以预设的角色与行为约束作为 \texttt{system} 提示词，调用 SDK 的 \texttt{streamText} 取得流式响应对象，再经 \texttt{toDataStreamResponse} 封装为 Web \texttt{Response} 直接返回；与此同时通过 \texttt{maxDuration = 30} 指令向 Next.js 声明该 Route Handler 的时长上限，用于配合无服务器部署平台对长连接的处理\cite{nextjsdocs}。
 
-\begin{minted}[fontsize=\scriptsize, breaklines]{typescript}
-import { streamText } from "ai";
-import { model } from "@/lib/ai";
-export const maxDuration = 30;
-export async function POST(req: Request) {
-  const { messages } = await req.json();
-  const system = `... 角色与行为约束 system prompt ...`;
-  const result = streamText({ model, system, messages });
-  return result.toDataStreamResponse();
-}
-\end{minted}
-
-这段代码涉及三个关键 API：\texttt{streamText} 通过 OpenAI 兼容 Provider 向远端模型发起 \texttt{stream:true} 的 Chat Completions 请求，返回一个包装后的流对象；\texttt{toDataStreamResponse} 把该流封装为符合 Vercel AI SDK Data Stream Protocol 的 Web \texttt{Response}\cite{aisdk2024docs}；\texttt{maxDuration = 30} 则是 Next.js 的 Route Handler 时长上限指令，用于配合无服务器部署平台对长连接的处理\cite{nextjsdocs}。
+这一精简实现涉及三个关键 API：\texttt{streamText} 通过 OpenAI 兼容 Provider 向远端模型发起 \texttt{stream:true} 的 Chat Completions 请求，返回一个包装后的流对象；\texttt{toDataStreamResponse} 把该流封装为符合 Vercel AI SDK Data Stream Protocol 的 Web \texttt{Response}\cite{aisdk2024docs}；\texttt{maxDuration} 则把"长连接最长允许多久"这一部署级约束以代码声明方式与业务文件绑定，便于后续迁移时同步迁出\cite{nextjsdocs}。
 
 需要严谨说明的是，本文所称“SSE 风格”流式响应在协议层与传统 \texttt{text/event-stream} 标准 SSE 并不完全等同：标准 SSE 由 WHATWG 在 HTML 规范中定义，要求响应 \texttt{Content-Type: text/event-stream}、按 \texttt{event:}/\texttt{data:} 行格式封装，并由浏览器原生 \texttt{EventSource} 接口解析\cite{whatwgeventsource,rfc8895eventsource}。Vercel AI SDK 的 Data Stream Protocol 借鉴了相同的“一行一事件、按行解析”思想，但出于可携带二进制安全字符串、支持 POST 请求体以及兼容流式 fetch 的考虑，使用 \texttt{Content-Type: text/plain; charset=utf-8} 与自定义前缀字符（如 \texttt{0:}、\texttt{2:}、\texttt{e:}、\texttt{f:}）区分文本块、工具调用、错误与完成等帧类型，并依靠 HTTP/1.1 chunked transfer encoding 实现分块推送\cite{aisdk2024docs,rfc7230chunked}。两者的共同特征是“在单条长连接上把一次响应拆为多次增量帧”，因此在工程语境下统称为“SSE 风格的增量流式响应”是合适的；但读者应注意它并非通过浏览器 \texttt{EventSource} 接口消费，而是由 SDK 在 fetch 之上自行解析。
 
-\noindent\textbf{（3）客户端：\texttt{useChat} 钩子的增量渲染。}浏览器侧的 \path{src/features/problems/bot/components/form.tsx} 没有直接处理 SSE 帧，而是依赖 \texttt{@ai-sdk/react} 的 \texttt{useChat} 钩子\cite{aisdkreact2024docs}：
-
-\begin{minted}[fontsize=\scriptsize, breaklines]{typescript}
-const { messages, input, handleInputChange, setMessages, handleSubmit } =
-  useChat({
-    initialMessages: [{
-      id: problem?.problemId || "",
-      role: "system",
-      content: `Problem description:\n${description}`,
-    }],
-  });
-\end{minted}
+\noindent\textbf{（3）客户端：\texttt{useChat} 钩子的增量渲染。}浏览器侧的 \path{src/features/problems/bot/components/form.tsx} 没有直接处理 SSE 帧，而是依赖 \texttt{@ai-sdk/react} 的 \texttt{useChat} 钩子\cite{aisdkreact2024docs}：组件挂载时把当前题目描述以 \texttt{role: "system"} 形式作为 \texttt{initialMessages} 注入，钩子返回 \texttt{messages}、\texttt{input}、\texttt{setMessages}、\texttt{handleSubmit} 等受控值与回调，由组件直接消费用于渲染对话区与输入框。
 
 该钩子在内部完成了三件事。其一，调用 \texttt{fetch("/api/chat", \{ method: "POST", body: JSON.stringify(\{ messages \}) \})} 并保留返回的 \texttt{ReadableStream}；其二，逐 chunk 读取流并按 Data Stream Protocol 行协议解析出文本片段、工具调用片段或结束帧；其三，把解析得到的当前助手消息对象不断 \texttt{setMessages} 到 React 状态，使 \texttt{messages} 数组在每个 chunk 到达时都触发一次最小化重渲染。\path{form.tsx} 仅消费 \texttt{messages}，并通过 \texttt{MdxPreview} 把已到达的 Markdown 文本即时渲染为代码块、列表、强调等富文本，使用户看到“逐段浮现”的回复效果。
 
@@ -426,39 +394,9 @@ const { messages, input, handleInputChange, setMessages, handleSubmit } =
 
 \noindent\textbf{（1）异步状态机与判题主链路解耦。}\texttt{analyzeCode} 进入函数体后立即创建一条 \texttt{status="QUEUED"} 的 \texttt{CodeAnalysis} 记录，再在 \texttt{try} 块内推进到 \texttt{PROCESSING}，调用模型，并在工具回调内完成 \texttt{COMPLETED} 写入；任何一步异常都会被 \texttt{catch} 捕获并把状态置为 \texttt{FAILED}（图~\ref{fig:ch5-ai-analyze-pipeline}）。这种“先建占位记录、再推进状态”的模式具有两个直接好处：第一，前端无需轮询时使用复杂的“记录是否存在”逻辑，统一查同一行的 \texttt{status} 字段即可；第二，即便模型返回超时或调用方进程被回收，最终落库的状态仍能反映“启动过但未完成”，便于教师与运维人员排查。在与判题主链路的关系上，分析任务由 Server Action 异步触发但不阻塞判题返回，因此即便 AI 服务故障，学生仍可拿到 \texttt{AC}/\texttt{WA} 等标准结果，仅看不到分析卡片。
 
-\noindent\textbf{（2）Tool Calling 强约束输出。}为避免“让模型用 JSON 自由文本回答然后我们写正则解析”这一脆弱方案，本实现采用 Vercel AI SDK 的 \texttt{tool} 与 \texttt{toolChoice} 联合机制\cite{aisdk2024docs}：
+\noindent\textbf{（2）Tool Calling 强约束输出。}为避免“让模型用 JSON 自由文本回答然后我们写正则解析”这一脆弱方案，本实现采用 Vercel AI SDK 的 \texttt{tool} 与 \texttt{toolChoice} 联合机制\cite{aisdk2024docs}：在 \texttt{generateText} 调用中声明唯一一个名为 \texttt{saveCodeAnalysis} 的工具，其入参由 \texttt{zod} 直接描述为一组结构化字段（含时间/空间复杂度枚举、五项 0--100 整数分数与一段长文本反馈，详见表~\ref{tab:ch5-codeanalysis-fields}），其回调函数直接以这些字段更新对应 \texttt{CodeAnalysis} 记录并把状态推进到 \texttt{COMPLETED}；同时通过 \texttt{toolChoice} 指定该工具为强制调用项，使模型在本次响应中必须以工具调用形式返回结构化结果，而不允许产生自由文本。
 
-\begin{minted}[fontsize=\scriptsize, breaklines]{typescript}
-await generateText({
-  model,
-  system: `... 评分规则与复杂度取值范围 ...`,
-  messages: [{ role: "user", content }],
-  tools: {
-    saveCodeAnalysis: tool({
-      description: "Stores the AI's code analysis results into the database.",
-      parameters: z.object({
-        timeComplexity: Complexity.optional(),
-        spaceComplexity: Complexity.optional(),
-        overallScore: z.number().int().min(0).max(100).optional(),
-        styleScore: z.number().int().min(0).max(100).optional(),
-        readabilityScore: z.number().int().min(0).max(100).optional(),
-        efficiencyScore: z.number().int().min(0).max(100).optional(),
-        correctnessScore: z.number().int().min(0).max(100).optional(),
-        feedback: z.string().optional(),
-      }),
-      execute: async (args) => {
-        await prisma.codeAnalysis.update({
-          where: { id: analysis.id },
-          data:  { status: "COMPLETED", ...args },
-        });
-      },
-    }),
-  },
-  toolChoice: { type: "tool", toolName: "saveCodeAnalysis" },
-});
-\end{minted}
-
-这一段是整个 AI 子系统中最关键的几行代码，背后包含三个工程要点。其一，\textbf{参数即 Schema}：\texttt{parameters} 直接以 \texttt{zod} 描述，AI SDK 在请求时会把它编译为 OpenAI 兼容的 JSON Schema 注入到 \texttt{tools} 字段；模型在响应中如果声明调用该工具，必须按 Schema 提供参数，否则响应会被拒收\cite{aisdk2024docs}。其二，\textbf{回调即落库}：\texttt{execute} 不是“返回值给模型”而是“拿到参数立刻写库”，把 SDK 的 Tool Calling 链路用作“服务端结构化回调”而非“多轮 Agent”，避免引入不必要的多轮调用复杂度。其三，\textbf{强制工具选择}：\texttt{toolChoice: \{ type: "tool", toolName: "saveCodeAnalysis" \}} 命令模型\textbf{必须}调用该工具而不能直接产生自由文本，从而把“模型偶尔不听话”的概率从“可能输出格式错误”收敛为“调用工具但部分字段缺失”。结合 \texttt{parameters} 中所有字段都是 \texttt{optional} 的设计，最坏情况下也只会出现“分析记录字段不全”而不会出现“整条记录无法落库”，这与传统“正则匹配 JSON 字符串”的脆弱性形成鲜明对比。
+这一调用形态背后包含三个工程要点。其一，\textbf{参数即 Schema}：工具入参直接以 \texttt{zod} 描述，AI SDK 在请求时会把它编译为 OpenAI 兼容的 JSON Schema 注入到 \texttt{tools} 字段；模型在响应中如果声明调用该工具，必须按 Schema 提供参数，否则响应会被拒收\cite{aisdk2024docs}。其二，\textbf{回调即落库}：工具的 \texttt{execute} 回调不是“返回值给模型”而是“拿到参数立刻写库”，把 SDK 的 Tool Calling 链路用作“服务端结构化回调”而非“多轮 Agent”，避免引入不必要的多轮调用复杂度。其三，\textbf{强制工具选择}：通过 \texttt{toolChoice} 指定命令模型\textbf{必须}调用该工具而不能直接产生自由文本，从而把“模型偶尔不听话”的概率从“可能输出格式错误”收敛为“调用工具但部分字段缺失”。结合工具入参中所有字段均声明为 \texttt{optional} 的设计，最坏情况下也只会出现“分析记录字段不全”而不会出现“整条记录无法落库”，这与传统“正则匹配 JSON 字符串”的脆弱性形成鲜明对比。
 
 \begingroup
 \small
@@ -466,7 +404,7 @@ await generateText({
 \setlength{\LTright}{0pt}
 \setlength{\tabcolsep}{3pt}
 \begin{longtable}{P{0.20\textwidth}P{0.22\textwidth}P{0.46\textwidth}}
-\caption{CodeAnalysis 结构化结果字段设计}\\
+\caption{CodeAnalysis 结构化结果字段设计}\label{tab:ch5-codeanalysis-fields}\\
 \toprule
 \textbf{字段} & \textbf{类型或取值特征} & \textbf{作用说明} \\
 \midrule
@@ -502,17 +440,7 @@ await generateText({
 
 \subsection{聊天面板的上下文构造与题面注入}
 
-聊天面板 \path{form.tsx} 的初始消息中放入了一条 \texttt{role: "system"} 的题面消息（\texttt{Problem description:\textbackslash n\$\{description\}}），并在每次表单提交时再额外把当前编辑器代码以 \texttt{role: "system"} 形式 \texttt{setMessages} 追加到列表中：
-
-\begin{minted}[fontsize=\scriptsize, breaklines]{typescript}
-const currentCodeMessage = {
-  id: problem?.problemId || "",
-  role: "system" as const,
-  content: `Current code:\n\`\`\`${language}\n${value}\n\`\`\``,
-};
-setMessages((prev) => [...prev, currentCodeMessage]);
-handleSubmit();
-\end{minted}
+聊天面板 \path{form.tsx} 的初始消息中放入了一条 \texttt{role: "system"} 的题面消息（形如 “\texttt{Problem description: ...}”）；并在每次表单提交时再额外把当前编辑器代码以 Markdown 围栏（\texttt{\textasciigrave\textasciigrave\textasciigrave}\textit{language}\textellipsis\texttt{\textasciigrave\textasciigrave\textasciigrave}）形式包装为另一条 \texttt{role: "system"} 消息，通过 \texttt{setMessages} 追加到对话上下文末尾，再调用 \texttt{handleSubmit} 触发本轮请求。
 
 这种“题面常驻 + 代码现注入”的策略在工程上具有两点考虑：第一，题面在用户进入页面时即固定，将其作为初始系统消息可以避免重复传输；第二，代码会被频繁修改，每次提问时拼一份当前代码进入 \texttt{messages}，可保证模型看到的始终是用户\textbf{此刻屏幕上的代码}而非任何缓存版本，这对于“为什么我这一行运行不出来”这样的问题至关重要。
 
