@@ -46,7 +46,7 @@
 
 从研究脉络上看，在线编程评测相关研究长期关注“判题正确性、执行隔离、反馈形式与教学价值”等核心问题\cite{kurnia2001online,leal2003mooshak,ala2005survey,ihantola2011automated,keuning2018feedback}。Paiva 等对计算机科学作业自动评测的综述指出，除功能正确性外，效率、行为与可读性等维度正逐步进入自动评测视野，同时容器化与静态分析技术正在推动平台工程形态演进\cite{paiva2022automated}。Messer 等进一步从系统综述角度总结了自动评分与反馈工具的研究热点，强调评测维度、自动化程度与评估方法之间存在明显不均衡，并指出公开数据集不足会限制不同工具之间的可比性\cite{messer2024automated}。在入门编程教学层面，Finnie-Ansley 等关于 Codex 的早期研究提示，代码生成类模型可能显著改变学生练习与考核形态，需要重新讨论学术诚信与能力培养目标\cite{finnieansley2022robots}；Denny 等关于 Copilot 提示工程的研究则说明，自然语言与代码协同交互正在成为新的学习路径\cite{denny2023conversing}；Kazemitabaar 等从实验角度讨论了 AI 代码生成器对新手学习的影响，提示“效率提升”与“过度依赖”可能同时存在\cite{kazemitabaar2023chi}。Raihan 等从系统文献综述角度梳理了 LLM 进入计算机教育的多条路径，涵盖课程建设、学习支持与风险治理等方向\cite{raihan2025llmcsed}。Koutcheme 等的研究则表明，开源大模型在“生成反馈”和“作为评判者评估反馈质量”两类任务上已具备可用潜力，为教学平台引入多模型策略提供了依据\cite{koutcheme2024evaluatinglm,koutcheme2024openfeedbackiticse}。
 
-与上述研究脉络相对应，本文将自身工作定位在“客观判题主链路 + 容器化执行支撑 + 判题后结构化解释性反馈”的一体化交汇点：一方面延续 OJ 平台对确定性与可复现性的基本要求\cite{tran2013uoj}；另一方面借鉴云原生与容器隔离的工程方法，降低运行环境漂移与安全风险\cite{burns2016borg,hezhenwei2020kubernetes,dockerdocs,kubernetesdocs,nist201716800190}；再者在教学支持层面把大模型能力限定为辅助解释与提示，避免替代标准测试判定\cite{jacobs2024feedback,sarsa2022llm,wangfang2023ai,zhanghongzhuo2024genai,lubin2025llm}。图~\ref{fig:ch1-research-map}给出了三条研究脉络与本文选题关系的示意。
+与上述研究脉络相对应，本文将自身工作定位在“客观判题主链路、容器化执行支撑以及判题后结构化解释性反馈”的一体化交汇点：一方面延续 OJ 平台对确定性与可复现性的基本要求\cite{tran2013uoj}；另一方面借鉴云原生与容器隔离的工程方法，降低运行环境漂移与安全风险\cite{burns2016borg,hezhenwei2020kubernetes,dockerdocs,kubernetesdocs,nist201716800190}；再者在教学支持层面把大模型能力限定为辅助解释与提示，避免替代标准测试判定\cite{jacobs2024feedback,sarsa2022llm,wangfang2023ai,zhanghongzhuo2024genai,lubin2025llm}。图~\ref{fig:ch1-research-map}给出了三条研究脉络与本文选题关系的示意。
 
 \begin{figure}[htbp]
   \centering
@@ -55,7 +55,7 @@
   \label{fig:ch1-research-map}
 \end{figure}
 
-这也正是本文的研究切入点。本文希望围绕“在线编程评测平台”这一核心对象，在不破坏客观判题确定性的前提下，引入容器化执行和服务化组织方式提升平台工程能力，并引入 AI 辅助反馈机制增强教学支持效果。换言之，本文关注的不是孤立地实现某一项功能，而是尝试构建“客观判题主链路 + 云原生执行支撑 + AI 解释性反馈”相结合的一体化平台方案。
+这也正是本文的研究切入点。本文希望围绕“在线编程评测平台”这一核心对象，在不破坏客观判题确定性的前提下，引入容器化执行和服务化组织方式提升平台工程能力，并引入 AI 辅助反馈机制增强教学支持效果。换言之，本文关注的不是孤立地实现某一项功能，而是尝试构建一种把客观判题主链路、云原生执行支撑与 AI 解释性反馈结合起来的一体化平台方案。
 
 \section{本文主要工作}
 

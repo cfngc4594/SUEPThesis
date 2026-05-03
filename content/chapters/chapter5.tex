@@ -17,7 +17,7 @@
 
 在运行环境支持上，系统通过配置项区分本地 Docker 模式和远程 Docker 模式。当在本地模式下运行时，平台会借助宿主机 Docker 套接字来管理容器，而在远程模式下运行时，会依据协议、地址、端口、证书来建立远程 Docker 连接。如此设计，使得判题执行环境能够同 Web 服务实现解耦，同时也为后续把判题节点迁移至独立服务器或者容器集群给予了可行的途径。
 
-从工程生态角度看，本文实现所依赖的关键第三方组件均具有公开可查的文档或源码：容器与镜像语义可参考 Docker 与 OCI 规范\cite{dockerdocs,opencontainers}；编排与云侧扩展路径可参考 Kubernetes 文档与云原生参考材料\cite{kubernetesdocs,huawei2020cloudnativedoc}；关系型数据持久化遵循 PostgreSQL 官方手册所描述的事务与 SQL 语义\cite{postgresqlmanual}；对象关系映射与迁移工具链遵循 Prisma 官方文档\cite{prismadocs}；前端工程栈与路由构建可参考 Next.js 文档\cite{nextjsdocs}。在“判题执行服务化”方面，Judge0 与 DOMjudge 等开源社区实现提供了可对照的 API 形态、沙箱边界与运维经验\cite{judge0online,domjudgeonline}，有助于解释本文为何采用“Web 服务 + 独立判题执行环境”的解耦思路，而不是把所有判题逻辑耦合在 Web 进程内。
+从工程生态角度看，本文实现所依赖的关键第三方组件均具有公开可查的文档或源码：容器与镜像语义可参考 Docker 与 OCI 规范\cite{dockerdocs,opencontainers}；编排与云侧扩展路径可参考 Kubernetes 文档与云原生参考材料\cite{kubernetesdocs,huawei2020cloudnativedoc}；关系型数据持久化遵循 PostgreSQL 官方手册所描述的事务与 SQL 语义\cite{postgresqlmanual}；对象关系映射与迁移工具链遵循 Prisma 官方文档\cite{prismadocs}；前端工程栈与路由构建可参考 Next.js 文档\cite{nextjsdocs}。在“判题执行服务化”方面，Judge0 与 DOMjudge 等开源社区实现提供了可对照的 API 形态、沙箱边界与运维经验\cite{judge0online,domjudgeonline}，有助于解释本文为何采用“Web 服务与独立判题执行环境分离”的解耦思路，而不是把所有判题逻辑耦合在 Web 进程内。
 
 \begingroup
 \small
@@ -56,7 +56,7 @@ AI 分析模块 & \texttt{analyze-code.ts} & 在判题主链路外异步创建 C
 
 \subsection{认证提供方与登录入口页面}
 
-\path{src/lib/auth.ts} 中注册的 \texttt{providers} 包括三类：其一，\texttt{Credentials}，用于邮箱 + 密码登录，\texttt{authorize} 回调内使用 \texttt{authSchema}（\texttt{zod}）解析入参，以 \texttt{Prisma} 按邮箱查询用户并以 \texttt{bcrypt.compare} 校验口令散列；校验失败时返回 \texttt{null}。其二，\texttt{GitHub}，启用 \texttt{allowDangerousEmailAccountLinking} 以便与已有邮箱账户做提供方关联（具体风险与适用场景见 Auth.js 文档说明）\cite{authjsdocs}。其三，\texttt{Google}，配置方式与 GitHub 同属 OAuth 提供方，登录页同样渲染为第三方按钮；下文以 GitHub 为主描述 OAuth 主流程，Google 与之同构。
+\path{src/lib/auth.ts} 中注册的 \texttt{providers} 包括三类：其一，\texttt{Credentials}，用于以邮箱和密码登录，\texttt{authorize} 回调内使用 \texttt{authSchema}（\texttt{zod}）解析入参，以 \texttt{Prisma} 按邮箱查询用户并以 \texttt{bcrypt.compare} 校验口令散列；校验失败时返回 \texttt{null}。其二，\texttt{GitHub}，启用 \texttt{allowDangerousEmailAccountLinking} 以便与已有邮箱账户做提供方关联（具体风险与适用场景见 Auth.js 文档说明）\cite{authjsdocs}。其三，\texttt{Google}，配置方式与 GitHub 同属 OAuth 提供方，登录页同样渲染为第三方按钮；下文以 GitHub 为主描述 OAuth 主流程，Google 与之同构。
 
 自定义登录页路径为 \texttt{pages.signIn = "/sign-in"}，对应 \path{src/app/(auth)/sign-in/page.tsx}。该页面上方为 \texttt{CredentialsSignInForm}（\path{src/components/credentials-sign-in-form.tsx}），下方为分隔线后遍历 \texttt{providerMap} 生成的 OAuth 按钮表单；\texttt{providerMap} 由 \texttt{providers} 派生并\textbf{过滤掉} \texttt{credentials}，避免与上方表单重复\cite{authjsdocs}。注册流程由 \path{src/app/actions/auth.ts} 中的 \texttt{signUpWithCredentials} 完成：校验邮箱未被占用后，以 \texttt{bcrypt.hash}（盐轮数 10）写入密码散列并创建用户；若当前为全库首位用户，则将角色更新为管理员（与 \texttt{createUser} 事件中“首用户赋 \texttt{ADMIN}”逻辑一致）。该登录页的 UI 形态见图~\ref{fig:ch5-signin}。
 
@@ -434,7 +434,7 @@ AI 辅助子系统并非主判题链路的一部分，而是围绕“客观判�
 
 复杂度分析的提示词将 \texttt{Complexity} 取值集合（\texttt{O(1)}、\texttt{O(logN)}、\texttt{O(N)} 等八个枚举）显式写入 \texttt{system} 上下文，并要求模型仅返回形如 \texttt{\{"time":"O(N)","space":"O(1)"\}} 的 JSON 对象；返回后立刻用 \texttt{AnalyzeComplexityResponseSchema.safeParse} 校验。这种“枚举集合在提示词中—JSON Schema 在解析端”的双向收敛策略，使最终落到前端的字段一定属于预定义集合，避免出现“\texttt{O(N)\^2}”“\texttt{Linear}”等不规范字符串导致雷达图与状态徽章渲染失败。
 
-代码优化按钮则在 \texttt{ai-improve.ts} 中拼装一段更长的提示词：除当前代码与可选错误信息外，还从数据库查询当前题目的英文描述（缺失时回退到中文）以及该题目下所有语言的模板代码，并在末尾要求模型仅返回 \texttt{\{ optimizedCode, explanation, issuesFixed \}} 形式的 JSON。值得注意的是，模型实际输出常常包含 \texttt{```json ... ```} 围栏，因此实现先用正则 \texttt{/```(?:json)?\textbackslash s*([\textbackslash s\textbackslash S]*?)```/} 提取代码块内 JSON，再回退到“整段中第一段花括号包裹文本”的宽松匹配，最后用 \texttt{OptimizeCodeOutputSchema.safeParse} 做 zod 校验。这种“宽容解析 + 严格校验”的两段式处理避免了把模型偶发的 Markdown 包装直接当作错误抛回前端。
+代码优化按钮则在 \texttt{ai-improve.ts} 中拼装一段更长的提示词：除当前代码与可选错误信息外，还从数据库查询当前题目的英文描述（缺失时回退到中文）以及该题目下所有语言的模板代码，并在末尾要求模型仅返回 \texttt{\{ optimizedCode, explanation, issuesFixed \}} 形式的 JSON。值得注意的是，模型实际输出常常包含 \texttt{```json ... ```} 围栏，因此实现先用正则 \texttt{/```(?:json)?\textbackslash s*([\textbackslash s\textbackslash S]*?)```/} 提取代码块内 JSON，再回退到“整段中第一段花括号包裹文本”的宽松匹配，最后用 \texttt{OptimizeCodeOutputSchema.safeParse} 做 zod 校验。这种先做宽容解析、再做严格校验的两段式处理避免了把模型偶发的 Markdown 包装直接当作错误抛回前端。
 
 返回到前端后，优化结果不会静默覆盖原代码，而是被存入 \texttt{useProblemEditorStore} 的 \texttt{optimizedCode} 字段；只有当 \texttt{optimizedCode} 非空时，工具栏才会出现 \texttt{ViewToggleButton}，允许学生在 Monaco 普通编辑器与 Diff 编辑器之间切换查看改动。这种“原代码不可破坏、改动显式可见、最终由学生决定是否采纳”的处理方式与第三章中“AI 可控性”非功能要求一致。
 
@@ -442,7 +442,7 @@ AI 辅助子系统并非主判题链路的一部分，而是围绕“客观判�
 
 聊天面板 \path{form.tsx} 的初始消息中放入了一条 \texttt{role: "system"} 的题面消息（形如 “\texttt{Problem description: ...}”）；并在每次表单提交时再额外把当前编辑器代码以 Markdown 围栏（\texttt{\textasciigrave\textasciigrave\textasciigrave}\textit{language}\textellipsis\texttt{\textasciigrave\textasciigrave\textasciigrave}）形式包装为另一条 \texttt{role: "system"} 消息，通过 \texttt{setMessages} 追加到对话上下文末尾，再调用 \texttt{handleSubmit} 触发本轮请求。
 
-这种“题面常驻 + 代码现注入”的策略在工程上具有两点考虑：第一，题面在用户进入页面时即固定，将其作为初始系统消息可以避免重复传输；第二，代码会被频繁修改，每次提问时拼一份当前代码进入 \texttt{messages}，可保证模型看到的始终是用户\textbf{此刻屏幕上的代码}而非任何缓存版本，这对于“为什么我这一行运行不出来”这样的问题至关重要。
+这种“题面常驻、代码现注入”的策略在工程上具有两点考虑：第一，题面在用户进入页面时即固定，将其作为初始系统消息可以避免重复传输；第二，代码会被频繁修改，每次提问时拼一份当前代码进入 \texttt{messages}，可保证模型看到的始终是用户\textbf{此刻屏幕上的代码}而非任何缓存版本，这对于“为什么我这一行运行不出来”这样的问题至关重要。
 
 把题面与代码作为 \texttt{system} 消息而非 \texttt{user} 消息也有讲究。OpenAI 兼容协议中 \texttt{system} 消息的语义是“模型应作为既定背景理解”，与“用户实际在问什么”分离\cite{deepseek2024api}；这样回答时模型不容易把题面和代码反复抄回给学生，而是聚焦于回答本轮提问。结合提示词中要求“以用户语言回复”，最终用户得到的就是“知道题目、知道我现在写的代码、用我熟悉的语言简洁回答”的体验。
 
