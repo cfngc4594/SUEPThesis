@@ -77,31 +77,31 @@ Auth.js 配置中，\texttt{callbacks.jwt} 在检测到 \texttt{account.provider
   \begin{subfigure}[t]{0.48\textwidth}
     \centering
     \resizebox{\linewidth}{!}{\input{figures/auth_credentials_flow.tex}}
-    \caption{邮箱凭据登录与数据库会话建立（与 \texttt{lib/auth.ts}、\texttt{app/actions/auth.ts} 对应）}
+    \caption{邮箱凭据登录与数据库会话建立}
     \label{fig:ch5-auth-credentials-flow}
   \end{subfigure}
   \hfill
   \begin{subfigure}[t]{0.48\textwidth}
     \centering
     \resizebox{\linewidth}{!}{\input{figures/auth_oauth_github_flow.tex}}
-    \caption{GitHub OAuth 登录与 \texttt{/api/auth/*} 回调处理（与 \texttt{api/auth/[...nextauth]/route.ts} 对应）}
+    \caption{GitHub OAuth 登录与 \texttt{/api/auth/*} 回调处理}
     \label{fig:ch5-auth-github-flow}
   \end{subfigure}
-  \caption{平台身份认证主要流程示意（左：凭据；右：GitHub）}
+  \caption{平台身份认证主要流程示意}
   \label{fig:ch5-auth-overview}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.78\linewidth]{images/fig5-12.png}
-  \caption{自定义登录页（邮箱密码表单与 GitHub OAuth 按钮）截图}
+  \caption{自定义登录页截图}
   \label{fig:ch5-signin}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.78\linewidth]{images/fig5-13.png}
-  \caption{GitHub OAuth 授权确认页截图（敏感字段已遮蔽）}
+  \caption{GitHub OAuth 授权确认页截图}
   \label{fig:ch5-oauth}
 \end{figure}
 
@@ -309,7 +309,7 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
 \setlength{\LTright}{0pt}
 \setlength{\tabcolsep}{3pt}
 \begin{longtable}{P{0.18\textwidth}P{0.34\textwidth}P{0.40\textwidth}}
-\caption{判题异常分类与学生可见反馈策略（摘要）}\\
+\caption{判题异常分类与学生可见反馈策略}\\
 \toprule
 \textbf{异常类别} & \textbf{典型诱因} & \textbf{反馈策略} \\
 \midrule
@@ -340,7 +340,7 @@ AI 辅助子系统并非主判题链路的一部分，而是围绕客观判题�
 \begin{figure}[htbp]
   \centering
   \resizebox{0.96\textwidth}{!}{\input{figures/ai_subsystem_architecture.tex}}
-  \caption{AI 辅助子系统总体架构示意（三类入口—统一模型层—OpenAI 兼容 Provider—远端模型）}
+  \caption{AI 辅助子系统总体架构示意}
   \label{fig:ch5-ai-arch}
 \end{figure}
 
@@ -373,7 +373,7 @@ AI 辅助子系统并非主判题链路的一部分，而是围绕客观判题�
 \begin{figure}[htbp]
   \centering
   \resizebox{0.98\textwidth}{!}{\input{figures/ai_chat_sse_sequence.tex}}
-  \caption{聊天流式响应（SSE 风格 Data Stream）从浏览器到远端模型的完整时序示意}
+  \caption{聊天流式响应从浏览器到远端模型的完整时序示意}
   \label{fig:ch5-ai-sse-seq}
 \end{figure}
 
@@ -547,7 +547,7 @@ AI 子系统的失败兜底策略可归纳为三层。第一层是\textbf{对判
 \begin{figure}[htbp]
   \centering
   \resizebox{0.96\textwidth}{!}{\input{figures/lsp_client_architecture.tex}}
-  \caption{Monaco 编辑器与容器化 \texttt{clangd} 语言服务的连接关系示意（浏览器 LSP 客户端—代理—语言服务器）}
+  \caption{Monaco 编辑器与容器化 \texttt{clangd} 语言服务的连接关系示意}
   \label{fig:ch5-lsp-arch}
 \end{figure}
 
