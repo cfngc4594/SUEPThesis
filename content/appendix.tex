@@ -7,11 +7,12 @@
 
 本文实验通过以下命令完成依赖生成、数据初始化与构建校验：
 
-\begin{verbatim}
-bunx prisma generate
-bunx prisma db seed
-bun run build
-\end{verbatim}
+\inputminted[
+    frame=lines,
+    framesep=2mm,
+    baselinestretch=1.2,
+    fontsize=\small
+]{bash}{code/build_commands.sh}
 
 统一测试题目为“1000 两数之和”，统一测试语言为 C，统一做法为保留系统默认模板，只替换 \texttt{twoSum(...)} 函数。
 
@@ -20,91 +21,61 @@ bun run build
 \subsection*{AC 样例}
 预期状态为 AC；该样例也可作为“低效正确代码”用于 AI 复杂度分析。
 
-\begin{verbatim}
-int *twoSum(int *nums, int numsSize, int target, int *returnSize) {
-  for (int i = 0; i < numsSize; i++) {
-    for (int j = i + 1; j < numsSize; j++) {
-      if (nums[i] + nums[j] == target) {
-        int *res = malloc(sizeof(int) * 2);
-        res[0] = i;
-        res[1] = j;
-        *returnSize = 2;
-        return res;
-      }
-    }
-  }
-
-  *returnSize = 0;
-  return malloc(0);
-}
-\end{verbatim}
+\inputminted[
+    frame=lines,
+    framesep=2mm,
+    baselinestretch=1.2,
+    fontsize=\small
+]{c}{code/ac_sample.c}
 
 \subsection*{CE 样例}
 预期状态为 CE；适合展示系统编译报错能力以及 AI 对语法错误的解释能力。
 
-\begin{verbatim}
-int *twoSum(int *nums, int numsSize, int target, int *returnSize) {
-  int *res = malloc(sizeof(int) * 2)
-  res[0] = 0;
-  res[1] = 1;
-  *returnSize = 2;
-  return res;
-}
-\end{verbatim}
+\inputminted[
+    frame=lines,
+    framesep=2mm,
+    baselinestretch=1.2,
+    fontsize=\small
+]{c}{code/ce_sample.c}
 
 \subsection*{WA 样例}
 预期状态为 WA；适合展示系统基于标准输出比对进行判题的能力。
 
-\begin{verbatim}
-int *twoSum(int *nums, int numsSize, int target, int *returnSize) {
-  int *res = malloc(sizeof(int) * 2);
-  res[0] = 0;
-  res[1] = 0;
-  *returnSize = 2;
-  return res;
-}
-\end{verbatim}
+\inputminted[
+    frame=lines,
+    framesep=2mm,
+    baselinestretch=1.2,
+    fontsize=\small
+]{c}{code/wa_sample.c}
 
 \subsection*{RE 样例}
 预期状态为 RE；适合展示系统对运行期异常的识别能力。
 
-\begin{verbatim}
-int *twoSum(int *nums, int numsSize, int target, int *returnSize) {
-  abort();
-}
-\end{verbatim}
+\inputminted[
+    frame=lines,
+    framesep=2mm,
+    baselinestretch=1.2,
+    fontsize=\small
+]{c}{code/re_sample.c}
 
 \subsection*{TLE 样例}
 预期状态为 TLE；适合展示系统时间限制控制是否生效。
 
-\begin{verbatim}
-int *twoSum(int *nums, int numsSize, int target, int *returnSize) {
-  while (1) {
-  }
-}
-\end{verbatim}
+\inputminted[
+    frame=lines,
+    framesep=2mm,
+    baselinestretch=1.2,
+    fontsize=\small
+]{c}{code/tle_sample.c}
 
 \subsection*{可读性较差但可通过样例}
 预期状态为 AC；适合用于表6-5中的风格与可读性反馈案例。
 
-\begin{verbatim}
-int *twoSum(int *a, int n, int t, int *r) {
-  int i = 0;
-  for (; i < n; i++) {
-    int j = i + 1;
-    for (; j < n; j++) {
-      if (a[i] + a[j] == t) {
-        int *x = malloc(sizeof(int) * 2);
-        x[0] = i;
-        x[1] = j;
-        *r = 2;
-        return x;
-      }
-    }
-  }
-  *r = 0;
-  return malloc(0);
-}
-\end{verbatim}
+\inputminted[
+    frame=lines,
+    framesep=2mm,
+    baselinestretch=1.2,
+    fontsize=\small
+]{c}{code/readability_sample.c}
 
 \end{appendices}
