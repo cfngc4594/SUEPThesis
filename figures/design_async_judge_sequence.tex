@@ -1,0 +1,23 @@
+% 第4章：异步判题与状态回传时序（简化）
+\begin{tikzpicture}[
+  font=\scriptsize\sffamily,
+  actor/.style={minimum width=1.15cm, align=center},
+  lifeline/.style={draw, gray!60},
+  msg/.style={-{Stealth}, thick}
+]
+  \node[actor] (U) at (0,0) {学生\\浏览器};
+  \node[actor] (W) at (2.4,0) {Web\\服务};
+  \node[actor] (Q) at (4.8,0) {队列/\\事件};
+  \node[actor] (K) at (7.2,0) {判题\\Worker};
+  \node[actor] (D) at (9.6,0) {Docker};
+  \foreach \x in {U,W,Q,K,D} \draw[lifeline] (\x.south) -- ++(0,-5.2);
+
+  \draw[msg] ($(U.south)+(0,-0.6)$) -- node[above]{提交代码} ($(W.south)+(0,-0.6)$);
+  \draw[msg] ($(W.south)+(0,-1.0)$) -- node[above]{创建 Submission} ($(W.south)+(-0.05,-1.0)$);
+  \draw[msg] ($(W.south)+(0,-1.5)$) -- node[above]{投递任务} ($(Q.south)+(0,-1.5)$);
+  \draw[msg] ($(Q.south)+(0,-2.2)$) -- node[above]{拉取任务} ($(K.south)+(0,-2.2)$);
+  \draw[msg] ($(K.south)+(0,-2.8)$) -- node[above]{创建/执行容器} ($(D.south)+(0,-2.8)$);
+  \draw[msg, dashed] ($(D.south)+(0,-3.4)$) -- node[above]{判题结果} ($(K.south)+(0,-3.4)$);
+  \draw[msg, dashed] ($(K.south)+(0,-4.0)$) -- node[above]{写回状态} ($(W.south)+(0,-4.0)$);
+  \draw[msg, dashed] ($(W.south)+(0,-4.6)$) -- node[above]{推送/拉取更新} ($(U.south)+(0,-4.6)$);
+\end{tikzpicture}

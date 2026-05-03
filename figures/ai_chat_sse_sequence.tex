@@ -1,0 +1,43 @@
+% AI 聊天的 SSE 风格流式响应时序（浏览器 useChat ↔ /api/chat ↔ streamText ↔ 远端模型）
+\begin{tikzpicture}[
+  font=\scriptsize\sffamily,
+  actor/.style={minimum width=1.6cm, align=center},
+  lifeline/.style={draw, gray!60},
+  msg/.style={-{Stealth}, thick},
+  msgd/.style={-{Stealth}, thick, dashed}
+]
+  \node[actor] (U)  at (0,0)    {浏览器\\\texttt{useChat}};
+  \node[actor] (R)  at (3.0,0)  {Next.js\\\texttt{api/chat/route.ts}};
+  \node[actor] (S)  at (6.2,0)  {AI SDK\\\texttt{streamText}};
+  \node[actor] (P)  at (9.4,0)  {OpenAI 兼容\\Provider};
+  \node[actor] (M)  at (12.4,0) {远端大模型\\（DeepSeek 等）};
+  \foreach \x in {U,R,S,P,M} \draw[lifeline] (\x.south) -- ++(0,-7.0);
+
+  % 1. 用户提交 + 携带题面 system 消息 + 当前代码
+  \draw[msg] ($(U.south)+(0,-0.55)$) -- node[above, font=\tiny]{POST \texttt{/api/chat}（messages 含题面与当前代码）} ($(R.south)+(0,-0.55)$);
+
+  % 2. route.ts 调用 streamText
+  \draw[msg] ($(R.south)+(0,-1.10)$) -- node[above, font=\tiny]{\texttt{streamText(\{ model, system, messages \})}} ($(S.south)+(0,-1.10)$);
+
+  % 3. SDK 通过 Provider 向远端发起 streaming
+  \draw[msg] ($(S.south)+(0,-1.65)$) -- node[above, font=\tiny]{Chat Completions \texttt{stream:true}} ($(P.south)+(0,-1.65)$);
+  \draw[msg] ($(P.south)+(0,-2.20)$) -- node[above, font=\tiny]{HTTPS 长连接} ($(M.south)+(0,-2.20)$);
+
+  % 4. 远端按 token 增量返回
+  \draw[msgd] ($(M.south)+(0,-2.85)$) -- node[above, font=\tiny]{增量 token (chunk)} ($(P.south)+(0,-2.85)$);
+  \draw[msgd] ($(P.south)+(0,-3.30)$) -- node[above, font=\tiny]{解析 SSE chunk} ($(S.south)+(0,-3.30)$);
+
+  % 5. SDK 将 chunk 包装为 Data Stream Protocol（SSE 风格）行
+  \draw[msgd] ($(S.south)+(0,-3.85)$) -- node[above, font=\tiny]{\texttt{toDataStreamResponse()} 包装为行协议} ($(R.south)+(0,-3.85)$);
+
+  % 6. route.ts 以 chunked transfer 流式回传到浏览器
+  \draw[msgd] ($(R.south)+(0,-4.40)$) -- node[above, font=\tiny]{HTTP/1.1 chunked / Data Stream Protocol} ($(U.south)+(0,-4.40)$);
+
+  % 7. useChat 解析行协议并增量渲染
+  \draw[msg] ($(U.south)+(0,-5.05)$) -- node[above, font=\tiny]{增量 setMessages → React 重渲染} ($(U.south)+(-0.05,-5.05)$);
+
+  % 8. 流结束帧
+  \draw[msgd] ($(M.south)+(0,-5.65)$) -- node[above, font=\tiny]{\texttt{[DONE]}} ($(P.south)+(0,-5.65)$);
+  \draw[msgd] ($(S.south)+(0,-6.20)$) -- node[above, font=\tiny]{\texttt{finish} part / 关闭流} ($(R.south)+(0,-6.20)$);
+  \draw[msgd] ($(R.south)+(0,-6.65)$) -- node[above, font=\tiny]{结束 chunked 响应} ($(U.south)+(0,-6.65)$);
+\end{tikzpicture}

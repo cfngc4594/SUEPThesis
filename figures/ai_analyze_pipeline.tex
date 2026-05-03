@@ -1,0 +1,42 @@
+% 提交后异步代码分析的流水线与状态机（与 analyze-code.ts 对应）
+\begin{tikzpicture}[
+  font=\scriptsize\sffamily,
+  st/.style={draw, rounded corners=2pt, align=center, inner sep=4pt, minimum width=1.85cm, minimum height=0.65cm},
+  st1/.style={st, fill=blue!8},
+  st2/.style={st, fill=green!10},
+  st3/.style={st, fill=orange!10},
+  st4/.style={st, fill=purple!10},
+  st5/.style={st, fill=red!10},
+  ext/.style={draw, dashed, rounded corners=2pt, align=center, inner sep=4pt, minimum width=2.4cm, font=\tiny\sffamily},
+  arr/.style={-{Stealth[length=2mm]}, thick},
+  lab/.style={font=\tiny}
+]
+  % 主状态线
+  \node[st1] (Q)   {QUEUED};
+  \node[st2, right=0.55cm of Q]  (P)   {PROCESSING};
+  \node[st3, right=0.55cm of P]  (T)   {Tool Calling};
+  \node[st4, right=0.55cm of T]  (C)   {COMPLETED};
+  \node[st5, below=0.7cm of T]   (F)   {FAILED};
+
+  % 起点：判题完成后触发
+  \node[ext, left=0.55cm of Q, fill=gray!10] (J) {判题主链路完成\\\texttt{judge.ts}};
+  % 模型与数据库
+  \node[ext, above=0.5cm of T, fill=cyan!10] (M) {\texttt{generateText} +\\\texttt{toolChoice: saveCodeAnalysis}};
+  \node[ext, below=0.6cm of C, fill=yellow!12] (DB) {\texttt{CodeAnalysis} 表\\结构化字段落库};
+
+  % 主迁移
+  \draw[arr] (J)  -- node[above, lab]{创建记录} (Q);
+  \draw[arr] (Q)  -- node[above, lab]{开始处理} (P);
+  \draw[arr] (P)  -- node[above, lab]{发起调用} (T);
+  \draw[arr] (T)  -- node[above, lab]{工具回调 execute} (C);
+
+  % 异常分支
+  \draw[arr] (P) |- node[right, lab, near start]{异常} (F);
+  \draw[arr] (T) -- node[right, lab]{解析失败} (F);
+
+  % 与模型/数据库交互
+  \draw[arr] (T) -- node[right, lab]{Chat Completions} (M);
+  \draw[arr, dashed] (M) -- node[left, lab]{结构化字段} (T);
+  \draw[arr] (C) -- node[right, lab]{UPDATE} (DB);
+  \draw[arr, dashed] (F) to[bend right=25] node[below, lab]{标记 FAILED} (DB);
+\end{tikzpicture}

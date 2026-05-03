@@ -1,0 +1,22 @@
+% 第7章：后续演进路线图（示意时间轴，非真实排期）
+\begin{tikzpicture}[
+  font=\small\sffamily,
+  >=Stealth,
+  m/.style={circle, draw, fill=blue!10, inner sep=3pt, minimum size=0.85cm},
+  lbl/.style={align=center, font=\scriptsize}
+]
+  \draw[-{Stealth[length=3mm]}, very thick] (0,0) -- (10.5,0);
+  \coordinate (p1) at (1,0);
+  \coordinate (p2) at (3.5,0);
+  \coordinate (p3) at (6,0);
+  \coordinate (p4) at (8.5,0);
+  \foreach \x/\t in {1/MVP,3.5/异步队列,6/K8s 编排,8.5/课程化治理} \node[below=0.12cm, font=\scriptsize] at (\x,0) {\t};
+  \node[m] at (p1) {};
+  \node[m] at (p2) {};
+  \node[m] at (p3) {};
+  \node[m] at (p4) {};
+  \node[lbl, above=0.55cm of p1] {判题主链\\容器隔离};
+  \node[lbl, above=0.55cm of p2] {独立 Worker\\削峰填谷};
+  \node[lbl, above=0.55cm of p3] {多节点\\弹性伸缩};
+  \node[lbl, above=0.55cm of p4] {作业/成绩\\教师审阅};
+\end{tikzpicture}

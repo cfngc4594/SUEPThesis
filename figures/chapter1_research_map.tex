@@ -1,0 +1,14 @@
+% 第1章：三条研究脉络与本文交汇示意
+\begin{tikzpicture}[
+  font=\small,
+  dmellipse/.style={draw, ellipse, minimum width=3.0cm, minimum height=1.1cm, align=center, inner sep=2pt},
+  focus/.style={draw, very thick, rounded corners=4pt, fill=yellow!12, inner sep=8pt, align=center}
+]
+  \node[dmellipse, fill=cyan!10] (A) {在线编程评测\\与自动判题};
+  \node[dmellipse, fill=lime!15, right=1.8cm of A] (B) {云原生与\\弹性执行};
+  \node[dmellipse, fill=magenta!12, right=1.8cm of B] (C) {AI 辅助\\编程反馈};
+  \node[focus, below=1.5cm of B] (X) {\textbf{本文}\\一体化在线评测平台\\（判题主链 + 容器执行 + 解释性反馈）};
+  \draw[-{Stealth}, thick] (A.south) -- (X.north west);
+  \draw[-{Stealth}, thick] (B.south) -- (X.north);
+  \draw[-{Stealth}, thick] (C.south) -- (X.north east);
+\end{tikzpicture}

@@ -1,0 +1,12 @@
+% 第4章：全局—课程—作业 配置继承关系
+\begin{tikzpicture}[
+  font=\small\sffamily,
+  bx/.style={draw, rounded corners=3pt, inner sep=8pt, align=center, minimum width=3.6cm},
+  arr/.style={-{Stealth}, thick}
+]
+  \node[bx, fill=gray!12] (G) {全局默认\\镜像/命令/资源阈值};
+  \node[bx, fill=blue!8, below=1.0cm of G] (C) {课程级覆盖\\（可选）};
+  \node[bx, fill=green!10, below=1.0cm of C] (A) {作业级覆盖\\（最细粒度）};
+  \draw[arr] (G) -- node[right, font=\scriptsize]{字段未设置则继承} (C);
+  \draw[arr] (C) -- node[right, font=\scriptsize]{未设置则回退} (A);
+\end{tikzpicture}

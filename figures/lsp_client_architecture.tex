@@ -1,0 +1,17 @@
+% Monaco + WebSocket + 容器内 clangd（与 judge4c 工程一致的概念结构）
+\begin{tikzpicture}[
+  font=\scriptsize\sffamily,
+  box/.style={draw, rounded corners=2pt, align=center, inner sep=5pt, minimum width=2.4cm},
+  arr/.style={-{Stealth[length=2mm]}, thick}
+]
+  \node[box, fill=blue!8] (M) {浏览器内\\Monaco Editor};
+  \node[box, fill=green!10, right=1.0cm of M] (C) {\texttt{MonacoLanguageClient}\\\texttt{vscode-ws-jsonrpc}};
+  \node[box, fill=orange!10, right=1.0cm of C] (P) {语言服务容器\\jsonrpc-ws-proxy};
+  \node[box, fill=purple!8, right=1.0cm of P] (D) {Clangd\\(C/C++ LSP)};
+  \node[box, fill=gray!12, below=0.9cm of $(M)!0.5!(C)$] (DB) {数据库\\\texttt{LanguageServerConfig}};
+  \draw[arr] (DB) -- node[left, font=\tiny]{SSR 注入端点} (M);
+  \draw[arr] (M) -- node[above, font=\tiny]{LSP JSON-RPC} (C);
+  \draw[arr] (C) -- node[above, font=\tiny]{WebSocket} (P);
+  \draw[arr] (P) -- node[above, font=\tiny]{stdio 转发} (D);
+  \draw[arr, dashed] (D) -- ++(0,-0.65) -| node[near start, below, font=\tiny]{诊断/补全/签名等} (M.south);
+\end{tikzpicture}

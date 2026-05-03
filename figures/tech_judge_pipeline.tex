@@ -1,0 +1,13 @@
+% 第2章：判题主链路流水线
+\begin{tikzpicture}[
+  font=\small\sffamily,
+  st/.style={draw, rounded corners=2pt, minimum height=0.9cm, minimum width=2.0cm, align=center},
+  arr/.style={-{Stealth}, thick}
+]
+  \node[st, fill=blue!8] (n1) {接收\\源代码};
+  \node[st, fill=blue!8, right=0.6cm of n1] (n2) {编译\\构建};
+  \node[st, fill=blue!8, right=0.6cm of n2] (n3) {受控\\运行};
+  \node[st, fill=blue!8, right=0.6cm of n3] (n4) {用例\\比对};
+  \node[st, fill=blue!8, right=0.6cm of n4] (n5) {结果\\落库};
+  \foreach \a/\b in {n1/n2,n2/n3,n3/n4,n4/n5} \draw[arr] (\a) -- (\b);
+\end{tikzpicture}

@@ -1,73 +1,20 @@
+% 系统总体架构（TikZ），供正文 \resizebox{..}{!}{\input{...}} 嵌入
 \begin{tikzpicture}[
-  x=1cm,
-  y=1cm,
-  font=\small,
-  module/.style={
-    draw,
-    rounded corners=2pt,
-    fill=white,
-    align=center,
-    minimum height=0.9cm,
-    inner sep=4pt
-  },
-  flow/.style={-{Stealth[length=2.3mm]}, thick, draw=black!65},
-  trigger/.style={-{Stealth[length=2.3mm]}, dashed, thick, draw=black!60}
+  font=\small\sffamily,
+  box/.style={draw, rounded corners=2pt, align=center, inner sep=6pt, minimum width=2.6cm},
+  arr/.style={-{Stealth[length=2mm]}, thick}
 ]
-  % Layer backgrounds
-  \path[draw, rounded corners=4pt, fill=blue!7] (-7.2, 4.75) rectangle (7.2, 6.75);
-  \path[draw, rounded corners=4pt, fill=teal!7] (-7.2, 2.15) rectangle (7.2, 4.25);
-  \path[draw, rounded corners=4pt, fill=orange!10] (-7.2, -0.75) rectangle (2.35, 1.45);
-  \path[draw, rounded corners=4pt, fill=green!10] (2.65, -0.75) rectangle (7.2, 1.45);
-  \path[draw, rounded corners=4pt, fill=gray!10] (-7.2, -3.35) rectangle (7.2, -1.45);
+  \node[box, fill=blue!8] (ui) {表现层\\Web 工作区};
+  \node[box, fill=green!10, right=1.1cm of ui] (api) {业务服务层\\提交/题库/认证};
+  \node[box, fill=orange!12, right=1.1cm of api] (judge) {评测执行层\\容器化判题};
+  \node[box, fill=purple!10, right=1.1cm of judge] (ai) {AI 辅助层\\分析与问答};
+  \node[box, fill=gray!12, below=1.0cm of $(api)!0.5!(judge)$] (db) {数据支撑层\\关系型数据库};
 
-  % Layer titles
-  \node[anchor=west, font=\bfseries] at (-6.6, 6.15) {表现层};
-  \node[anchor=west, font=\bfseries] at (-6.6, 3.65) {业务服务层};
-  \node[anchor=west, font=\bfseries] at (-6.6, 0.85) {评测执行层};
-  \node[anchor=west, font=\bfseries] at (3.1, 0.95) {AI 辅助层};
-  \node[anchor=west, font=\bfseries] at (-6.6, -1.95) {数据层};
-
-  % Presentation layer
-  \node[module, text width=3.35cm] (ui1) at (-4.4, 5.7) {题目集与题目详情};
-  \node[module, text width=3.35cm] (ui2) at (0, 5.7) {代码编辑器与\\统一工作区};
-  \node[module, text width=3.35cm] (ui3) at (4.4, 5.7) {提交记录、结果详情\\与 AI 反馈面板};
-
-  % Service layer
-  \node[module, text width=3.2cm] (svc1) at (-4.45, 3.0) {Next.js 页面路由\\与 Server Actions};
-  \node[module, text width=3.2cm] (svc2) at (0, 3.0) {认证鉴权、题目读取\\与模板加载服务};
-  \node[module, text width=3.2cm] (svc3) at (4.45, 3.0) {提交受理、状态回写\\与结果聚合服务};
-
-  % Judge layer
-  \node[module, text width=2.45cm] (judge1) at (-4.65, 0.1) {Submission 创建\\与任务初始化};
-  \node[module, text width=2.45cm] (judge2) at (-1.75, 0.1) {编译命令生成\\与日志截断};
-  \node[module, text width=2.45cm] (judge3) at (1.15, 0.1) {Docker 容器执行\\与用例判定};
-
-  % AI layer
-  \node[module, text width=3.0cm] (ai1) at (5.15, 0.0) {异步分析任务、\\DeepSeek 调用\\与结构化反馈生成};
-
-  % Data layer
-  \node[module, text width=4.1cm] (data1) at (-2.75, -2.45) {Prisma 数据访问层\\User / Problem /\\Submission / Testcase /\\CodeAnalysis};
-  \node[module, text width=4.25cm] (data2) at (3.3, -2.45) {PostgreSQL 持久化存储\\及 Docker 本地 / 远程\\运行环境配置};
-
-  % Top-down flows
-  \draw[flow] (ui1.south) -- ++(0, -0.35) -| (svc1.north);
-  \draw[flow] (ui2.south) -- ++(0, -0.35) -| (svc2.north);
-  \draw[flow] (ui3.south) -- ++(0, -0.35) -| (svc3.north);
-
-  \draw[flow] (svc1.south) -- ++(0, -0.35) -| (judge1.north);
-  \draw[flow] (svc2.south) -- ++(0, -0.35) -| (judge2.north);
-  \draw[flow] (svc3.south) -- ++(0, -0.35) -| (judge3.north);
-  \draw[flow] (svc3.south) -- ++(0, -0.15) -| ([xshift=-0.8cm]ai1.north);
-
-  % Persistence flows
-  \draw[flow] (judge1.south) -- ++(0, -0.35) -| ([xshift=-0.9cm]data1.north);
-  \draw[flow] (judge2.south) -- ++(0, -0.35) -| ([xshift=0.9cm]data1.north);
-  \draw[flow] (judge3.south) -- ++(0, -0.35) -| ([xshift=-0.9cm]data2.north);
-  \draw[flow] (ai1.south) -- ++(0, -0.35) -| ([xshift=0.9cm]data2.north);
-
-  % Trigger from judge to AI
-  \draw[trigger] (judge3.east) --
-    node[pos=0.46, above, font=\scriptsize, fill=white, inner sep=1pt, align=center]
-    {判题完成\\后触发}
-    (ai1.west);
+  \draw[arr] (ui) -- node[above, font=\scriptsize] {HTTPS} (api);
+  \draw[arr] (api) -- node[above, font=\scriptsize] {调度/调用} (judge);
+  \draw[arr] (api) -- node[above, font=\scriptsize] {异步任务} (ai);
+  \draw[arr] (judge) -- node[right, font=\scriptsize, sloped] {结果写回} (api);
+  \draw[arr] (ai) -- node[right, font=\scriptsize, sloped] {结构化结果} (api);
+  \draw[arr] (api) -- node[left, font=\scriptsize] {持久化} (db);
+  \draw[arr, dashed] (judge.south) -- ++(0,-0.35) -| node[near start, below, font=\scriptsize] {Docker / 远程引擎} (db.north east);
 \end{tikzpicture}

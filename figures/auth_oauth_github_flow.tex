@@ -1,0 +1,16 @@
+% 与 judge4c：GitHub OAuth + handlers + 默认 JWT 编码路径一致（简图）
+\begin{tikzpicture}[
+  node distance=0.48cm,
+  font=\scriptsize\sffamily,
+  box/.style={draw, rounded corners=2pt, align=center, inner sep=4pt, text width=3.85cm},
+  arr/.style={-{Stealth[length=2mm]}, thick}
+]
+  \node[box, fill=blue!6] (A) {登录页\\sign-in/page.tsx\\调用 signIn("github")};
+  \node[box, fill=green!8, below=of A] (B) {浏览器重定向至\\GitHub 授权页};
+  \node[box, fill=orange!8, below=of B] (C) {用户同意授权后\\回调应用};
+  \node[box, fill=purple!8, below=of C] (D) {GET/POST\\api/auth/[...nextauth]/route.ts\\导出 handlers};
+  \node[box, fill=gray!10, below=of D] (E) {Auth.js 处理 OAuth 回调\\PrismaAdapter 写入/关联\\User、Account、Session};
+  \node[box, fill=cyan!8, below=of E] (F) {默认 jwt.encode\\（非凭据分支）};
+  \node[box, fill=blue!6, below=of F] (G) {写入会话 Cookie\\并重定向至 callbackUrl};
+  \foreach \x/\y in {A/B,B/C,C/D,D/E,E/F,F/G} \draw[arr] (\x) -- (\y);
+\end{tikzpicture}

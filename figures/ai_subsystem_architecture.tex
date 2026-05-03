@@ -1,0 +1,49 @@
+% AI 辅助子系统总体架构（三类入口 + 统一模型层 + OpenAI 兼容 Provider + 远端模型 + 数据库）
+\begin{tikzpicture}[
+  font=\scriptsize\sffamily,
+  box/.style={draw, rounded corners=2pt, align=center, inner sep=5pt, minimum width=2.6cm},
+  small/.style={draw, rounded corners=2pt, align=center, inner sep=4pt, minimum width=2.4cm, font=\tiny\sffamily},
+  arr/.style={-{Stealth[length=2mm]}, thick},
+  arrd/.style={-{Stealth[length=2mm]}, thick, dashed}
+]
+  % 第一层：三类前端入口
+  \node[small, fill=blue!8] (E1) {提交后异步分析\\\texttt{analyze-code.ts}};
+  \node[small, fill=blue!8, right=0.45cm of E1] (E2) {编辑期同步辅助\\\texttt{analyze.ts} / \texttt{ai-improve.ts}};
+  \node[small, fill=blue!8, right=0.45cm of E2] (E3) {上下文聊天\\\texttt{api/chat/route.ts} + \texttt{useChat}};
+
+  % 第二层：AI SDK 统一抽象
+  \node[box, fill=green!10, below=0.9cm of E2] (SDK) {Vercel AI SDK 统一模型层\\\texttt{generateText} / \texttt{streamText} / \texttt{tool}};
+
+  % 第三层：Provider
+  \node[box, fill=orange!10, below=0.7cm of SDK] (PR) {OpenAI 兼容 Provider\\\texttt{@ai-sdk/openai-compatible}\\\texttt{lib/ai.ts}};
+
+  % 第四层：远端模型（DeepSeek 等）
+  \node[box, fill=purple!10, below=0.7cm of PR] (M) {远端大模型服务\\（DeepSeek 等 OpenAI 兼容端点）};
+
+  % 右侧：数据库与前端展示
+  \node[box, fill=gray!12, right=1.2cm of PR] (DB) {PostgreSQL\\\texttt{CodeAnalysis} 等表};
+  \node[small, fill=cyan!10, right=0.8cm of E3] (UI) {前端面板\\雷达图 / Diff / 流式聊天};
+
+  % 三入口 → SDK
+  \draw[arr] (E1.south) -- ++(0,-0.25) -| (SDK.north);
+  \draw[arr] (E2.south) -- (SDK.north);
+  \draw[arr] (E3.south) -- ++(0,-0.25) -| (SDK.north);
+
+  % SDK → Provider → Model
+  \draw[arr] (SDK) -- node[right, font=\tiny]{HTTPS / OpenAI 兼容协议} (PR);
+  \draw[arr] (PR) -- node[right, font=\tiny]{Chat Completions} (M);
+
+  % 反向：模型流式回传
+  \draw[arrd] (M.east) to[bend right=20] node[right, font=\tiny]{增量 token} (PR.east);
+  \draw[arrd] (PR.east) to[bend right=20] node[right, font=\tiny]{异步 chunk} (SDK.east);
+
+  % E1 → DB（落库）
+  \draw[arr] (E1.east) -- ++(0.3,0) |- node[right, font=\tiny, near start]{结构化结果落库} (DB.west);
+  % E2 → UI（同步返回）
+  \draw[arr] (E2.east) -- ++(0.2,0) -- ++(0,0.0) -| (UI.south);
+  % E3 → UI（SSE 流式）
+  \draw[arrd] (E3.east) -- node[above, font=\tiny]{SSE 风格 Data Stream} (UI.west);
+
+  % UI → DB 读取
+  \draw[arrd] (UI.south east) to[bend left=20] node[right, font=\tiny]{读取分析记录} (DB.north east);
+\end{tikzpicture}
