@@ -60,6 +60,13 @@ AI 分析模块 & \texttt{analyze-code.ts} & 在判题主链路外异步创建 C
 
 自定义登录页路径为 \texttt{pages.signIn = "/sign-in"}，对应 \path{src/app/(auth)/sign-in/page.tsx}。该页面上方为 \texttt{CredentialsSignInForm}（\path{src/components/credentials-sign-in-form.tsx}），下方为分隔线后遍历 \texttt{providerMap} 生成的 OAuth 按钮表单；\texttt{providerMap} 由 \texttt{providers} 派生并\textbf{过滤掉} \texttt{credentials}，避免与上方表单重复\cite{authjsdocs}。注册流程由 \path{src/app/actions/auth.ts} 中的 \texttt{signUpWithCredentials} 完成：校验邮箱未被占用后，以 \texttt{bcrypt.hash}（盐轮数 10）写入密码散列并创建用户；若当前为全库首位用户，则将角色更新为管理员（与 \texttt{createUser} 事件中将首位用户赋予 \texttt{ADMIN} 角色的逻辑一致）。该登录页的 UI 形态见图~\ref{fig:ch5-signin}。
 
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.78\linewidth]{images/fig5-12.png}
+  \caption{自定义登录页截图}
+  \label{fig:ch5-signin}
+\end{figure}
+
 \subsection{邮箱凭据登录与数据库会话}
 
 凭据登录在 UI 层并非直接由浏览器调用 \texttt{/api/auth/callback/credentials}，而是先进入 Server Action \texttt{signInWithCredentials}：再次完成 \texttt{zod} 校验、数据库查询与 \texttt{bcrypt} 比对后，调用 \texttt{signIn("credentials", \{ redirect: false \})} 交由 Auth.js 建立会话\cite{authjsdocs}。成功后在客户端以 \texttt{toast} 提示并 \texttt{router.push(callbackUrl || "/")}。
@@ -70,9 +77,16 @@ Auth.js 配置中，\texttt{callbacks.jwt} 在检测到 \texttt{account.provider
 
 用户点击 GitHub 按钮时，登录页内联 Server Action 调用 \texttt{signIn("github", \{ redirectTo: callbackUrl \})}。浏览器随后跳转至 GitHub 授权端点，用户在 GitHub 站点完成授权确认（如图~\ref{fig:ch5-oauth} 所示）后回调本站的 \texttt{/api/auth/callback/github}，最终仍由 \texttt{handlers} 统一处理。与凭据分支不同，OAuth 成功后的 \texttt{jwt.encode} 走 \texttt{next-auth/jwt} 的默认 \texttt{encode}，即\textbf{不进入}上述 \texttt{createSession} 分支；账户绑定与 \texttt{linkAccount} 等事件在 \texttt{events} 钩子中记录结构化日志，便于排查账号合并问题\cite{authjsdocs}。
 
-无论从哪条分支登录，业务侧在服务端均通过统一的 \texttt{await auth()} 读取会话（例如 \path{src/app/actions/judge.ts}、\path{src/app/(protected)/dashboard/layout.tsx} 等）。判题入口据此取得 \texttt{session.user.id}，再写入 \texttt{Submission} 的外键，从而保证提交归属与认证身份一致；同时受保护页面在 layout 层就完成会话校验，未登录用户会被框架重定向到自定义登录页 \texttt{/sign-in}，避免在每个页面或 Server Action 中重复判空。安全方面，OAuth 客户端 ID、Secret 与回调 URL 等敏感配置项均通过 \texttt{getRequiredEnv} 从环境变量读取，缺失即抛错，避免凭据进入版本库或在生产期才暴露问题\cite{owasp2021top10}。
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.78\linewidth]{images/fig5-13.png}
+  \caption{GitHub OAuth 授权确认页截图}
+  \label{fig:ch5-oauth}
+\end{figure}
 
-\begin{figure}[htbp]
+无论从哪条分支登录，业务侧在服务端均通过统一的 \texttt{await auth()} 读取会话（例如 \path{src/app/actions/judge.ts}、\path{src/app/(protected)/dashboard/layout.tsx} 等）。判题入口据此取得 \texttt{session.user.id}，再写入 \texttt{Submission} 的外键，从而保证提交归属与认证身份一致；同时受保护页面在 layout 层就完成会话校验，未登录用户会被框架重定向到自定义登录页 \texttt{/sign-in}，避免在每个页面或 Server Action 中重复判空。安全方面，OAuth 客户端 ID、Secret 与回调 URL 等敏感配置项均通过 \texttt{getRequiredEnv} 从环境变量读取，缺失即抛错，避免凭据进入版本库或在生产期才暴露问题\cite{owasp2021top10}。两条登录分支的完整时序对比可见图~\ref{fig:ch5-auth-overview}。
+
+\begin{figure}[!htbp]
   \centering
   \begin{subfigure}[t]{0.48\textwidth}
     \centering
@@ -89,20 +103,6 @@ Auth.js 配置中，\texttt{callbacks.jwt} 在检测到 \texttt{account.provider
   \end{subfigure}
   \caption{平台身份认证主要流程示意}
   \label{fig:ch5-auth-overview}
-\end{figure}
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.78\linewidth]{images/fig5-12.png}
-  \caption{自定义登录页截图}
-  \label{fig:ch5-signin}
-\end{figure}
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.78\linewidth]{images/fig5-13.png}
-  \caption{GitHub OAuth 授权确认页截图}
-  \label{fig:ch5-oauth}
 \end{figure}
 
 \section{核心数据模型}
@@ -123,6 +123,8 @@ Auth.js 配置中，\texttt{callbacks.jwt} 在检测到 \texttt{account.provider
 从数据一致性角度看，当前模式设计并不是把所有文本和代码都堆在同一张表中，而是通过复合主键和唯一约束保证多语言内容与模板代码的组织稳定性。例如，同一道题目在同一种语言下只能存在一份模板代码，同一道题目在同一种语言和同一种内容类型下也只能存在一份本地化文本。这种设计既减少了重复数据，也让前端读取题目详情时更容易获得确定结果。
 
 \subsection{提交、测试用例与分析结果设计}
+
+围绕提交流转主链路，平台还需要为每一次代码提交记录其判题状态、用例执行结果与 AI 辅助分析结果。本小节先以表的形式汇总各核心数据表的字段设计，再结合表中字段说明 \texttt{Submission} 状态码的取值含义，以及围绕这些表所设置的关键数据约束，最后回到提交、测试用例与分析结果三者之间的协作关系上展开说明。
 
 \begingroup
 \small

@@ -20,7 +20,7 @@ AI 辅助部分同样还有改进空间。当前系统已经能够提供复杂�
 
 在评价维度上，本文当前主要围绕主链路可用性、判题正确性与 AI 反馈展示构建证据链，并发提交时延、基础设施成本、环境影响以及教师治理等量化评估内容则留待后续工作展开\cite{alemu2023serverless,ihantola2011automated,lubin2025llm}。这些方向也是把当前原型进一步推进到课程化、规模化部署阶段时最值得补强的着力点。教学落地方面，后续可在课程化数据闭环之上再考虑作业相似度与学术诚信等配套策略\cite{finnieansley2022robots,raihan2025llmcsed}，与判题内核解耦演进。
 
-结合工程落地路径，后续工作可按先补齐异步与观测能力、再扩展编排与教学治理的顺序推进：第一阶段把判题 worker 与队列事件化，完善日志、指标与追踪标识；第二阶段在 Kubernetes 等编排系统上实现判题节点弹性伸缩，并引入更严格的资源配额与配额审计\cite{kubernetesdocs,agache2020firecracker,nist201716800190}；第三阶段把课程、作业与课程级运行环境配置接入业务闭环，并引入教师侧 AI 摘要与异常过滤等治理能力\cite{lubin2025llm,raihan2025llmcsed}。图~\ref{fig:ch7-roadmap}给出了这一路线图的示意表达（里程碑时间为示意，不作为承诺排期）。
+结合工程落地路径，后续工作可按先补齐异步与观测能力、再扩展编排与教学治理的顺序推进：第一阶段把判题 worker 与队列事件化，完善日志、指标与追踪标识；第二阶段在 Kubernetes 等编排系统上实现判题节点弹性伸缩，并引入更严格的资源配额与配额审计\cite{kubernetesdocs,agache2020firecracker,nist201716800190}；第三阶段把课程、作业与课程级运行环境配置接入业务闭环，并引入教师侧 AI 摘要与异常过滤等治理能力\cite{lubin2025llm,raihan2025llmcsed}。图~\ref{fig:ch7-roadmap}给出了这一路线图的示意表达。
 
 \begin{figure}[htbp]
   \centering
