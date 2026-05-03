@@ -1,6 +1,6 @@
 \begin{abstract}
 
-传统在线编程评测平台通常能够完成自动判题，但在教学场景下仍存在一些明显不足，例如反馈信息过于简单、执行环境隔离不够清晰，以及在集中提交场景下扩展性有限。针对这些问题，本文结合高校程序设计课程的实际需求，设计并实现了一个基于云原生与 AI 辅助的一体化在线编程评测平台。
+传统的在线编程评测平台一般能够实现自动判题，然而在教学场景之中，还是存在一些不足之处，像是反馈信息太过简略、执行环境隔离不够明晰，并且在集中提交场景下扩展性存在局限。鉴于这些问题，本文依据高校程序设计课程的实际需求，设计并达成了一个借助云原生与 AI 辅助的一体化在线编程评测平台。
 
 本文工作的重点不是单纯实现“提交后给出结果”的基础闭环，而是在保证客观判题稳定性的前提下，进一步增强平台的工程可用性与学习支持能力。系统以自动判题为主线，完成了题库管理、题目展示、模板代码加载、在线提交、容器化编译运行、测试用例判定、提交记录展示和 AI 辅助分析等核心功能。
 
@@ -12,7 +12,7 @@
 
 \begin{abstractEn}
 
-Traditional online programming evaluation platforms can complete automatic judging, but they often provide limited feedback, weak execution isolation, and insufficient scalability under concentrated submission workloads. To address these issues in university programming education, this paper designs and implements an integrated online programming evaluation platform based on cloud-native ideas and AI-assisted feedback.
+Conventional online programming evaluation platforms are generally capable of carrying out automatic judging; nevertheless, within teaching contexts they still exhibit certain shortcomings, such as overly brief feedback messages, insufficiently clear isolation of execution environments, and limited scalability when submissions are concentrated. In light of these issues, drawing on the actual needs of programming courses in universities, this paper designs and accomplishes an integrated online programming evaluation platform that leverages cloud-native technology together with AI assistance.
 
 The work of this paper is not limited to building a basic submission-and-judging pipeline. Instead, it focuses on improving both engineering reliability and learning support while keeping objective judging as the core of the system. The platform includes problem management, problem presentation, template loading, online submission, containerized compilation and execution, testcase-based judging, submission history display, and AI-assisted analysis. User programs are compiled and executed in controlled Docker environments with resource limits, network isolation, and explicit status transitions, so that the judging process remains consistent and secure. The AI module runs asynchronously after objective judging and analyzes time complexity, space complexity, code style, readability, and efficiency to produce structured feedback and improvement suggestions.
 
