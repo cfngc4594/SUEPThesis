@@ -1,20 +1,40 @@
 % 系统总体架构（TikZ），供正文 \resizebox{..}{!}{\input{...}} 嵌入
 \begin{tikzpicture}[
   font=\small\sffamily,
-  box/.style={draw, rounded corners=2pt, align=center, inner sep=6pt, minimum width=2.6cm},
-  arr/.style={-{Stealth[length=2mm]}, thick}
+  box/.style={draw, rounded corners=2pt, align=center, inner sep=6pt,
+              minimum width=2.6cm, minimum height=1.2cm},
+  arr/.style={-{Stealth[length=2mm]}, thick},
+  lbl/.style={font=\scriptsize, fill=white, inner sep=1pt}
 ]
-  \node[box, fill=blue!8] (ui) {表现层\\Web 工作区};
-  \node[box, fill=green!10, right=1.1cm of ui] (api) {业务服务层\\提交/题库/认证};
-  \node[box, fill=orange!12, right=1.1cm of api] (judge) {评测执行层\\容器化判题};
-  \node[box, fill=purple!10, right=1.1cm of judge] (ai) {AI 辅助层\\分析与问答};
-  \node[box, fill=gray!12, below=1.0cm of $(api)!0.5!(judge)$] (db) {数据支撑层\\关系型数据库};
+  % 第一行：四个分层模块，水平排列，留出足够间距避免标签重叠
+  \node[box, fill=blue!8]                          (ui)    {表现层\\Web 工作区};
+  \node[box, fill=green!10,  right=1.6cm of ui]    (api)   {业务服务层\\提交/题库/认证};
+  \node[box, fill=orange!12, right=2.0cm of api]   (judge) {评测执行层\\容器化判题};
+  \node[box, fill=purple!10, right=2.0cm of judge] (ai)    {AI 辅助层\\分析与问答};
 
-  \draw[arr] (ui) -- node[above, font=\scriptsize] {HTTPS} (api);
-  \draw[arr] (api) -- node[above, font=\scriptsize] {调度/调用} (judge);
-  \draw[arr] (api) -- node[above, font=\scriptsize] {异步任务} (ai);
-  \draw[arr] (judge) -- node[right, font=\scriptsize, sloped] {结果写回} (api);
-  \draw[arr] (ai) -- node[right, font=\scriptsize, sloped] {结构化结果} (api);
-  \draw[arr] (api) -- node[left, font=\scriptsize] {持久化} (db);
-  \draw[arr, dashed] (judge.south) -- ++(0,-0.35) -| node[near start, below, font=\scriptsize] {Docker / 远程引擎} (db.north east);
+  % 第二行：数据支撑层，置于 api 正下方
+  \node[box, fill=gray!12, below=1.8cm of api]     (db)    {数据支撑层\\关系型数据库};
+
+  % ui -> api：单向 HTTPS
+  \draw[arr] (ui) -- node[lbl, above] {HTTPS} (api);
+
+  % api <-> judge：双向，上下分开两条平行线，标签分别置于上下
+  \draw[arr] ([yshift= 6pt]api.east)   -- node[lbl, above] {调度/调用}
+             ([yshift= 6pt]judge.west);
+  \draw[arr] ([yshift=-6pt]judge.west) -- node[lbl, below] {结果写回}
+             ([yshift=-6pt]api.east);
+
+  % api <-> ai：用上方双弧线绕过 judge，两条都向上凸但弧度不同避免重合
+  \draw[arr] (api.north) to[bend left=22]
+             node[lbl, above] {异步任务} (ai.north);
+  \draw[arr] (ai.north)  to[bend right=45]
+             node[lbl, above] {结构化结果} (api.north);
+
+  % api -> db：持久化（标签放在左侧，避开右侧的 Docker 虚线路径）
+  \draw[arr] (api) -- node[lbl, left] {持久化} (db);
+
+  % judge -> db：Docker / 远程引擎（虚线弧，从 judge 南边向右下凸出，
+  % 绕开 db 框，从右侧接入 db.east，标签置于弧线右上方）
+  \draw[arr, dashed] (judge.south) to[bend left=22]
+        node[lbl, right, pos=0.55] {Docker / 远程引擎} (db.east);
 \end{tikzpicture}
