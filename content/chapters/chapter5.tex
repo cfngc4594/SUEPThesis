@@ -66,13 +66,11 @@ AI 分析模块 & \texttt{analyze-code.ts} & 在判题主链路外异步创建 C
 
 Auth.js 配置中，\texttt{callbacks.jwt} 在检测到 \texttt{account.provider === "credentials"} 时为 \texttt{token} 打上 \texttt{credentials} 标记；随后在 \texttt{jwt.encode} 的自定义实现里，若 \texttt{token.credentials} 为真，则不再走默认 JWT 字符串编码，而是调用工程内的 \texttt{createSession}：生成 UUID 形式的 \texttt{sessionToken}，通过 \texttt{PrismaAdapter.createSession} 写入数据库，并把过期时间设为常量 \texttt{SESSION\_EXPIRY\_MS}（代码中为 30 天）。该返回值作为 Cookie 载荷由框架写入，从而使\textbf{凭据登录路径下的会话以数据库会话为主}，便于与 \texttt{PrismaAdapter} 其余表结构统一审计\cite{authjsdocs,prismadocs}。
 
-\subsection{GitHub OAuth 登录与默认编码分支}
+\subsection{GitHub OAuth 登录与受保护业务的衔接}
 
 用户点击 GitHub 按钮时，登录页内联 Server Action 调用 \texttt{signIn("github", \{ redirectTo: callbackUrl \})}。浏览器随后跳转至 GitHub 授权端点，用户在 GitHub 站点完成授权确认（如图~\ref{fig:ch5-oauth} 所示）后回调本站的 \texttt{/api/auth/callback/github}，最终仍由 \texttt{handlers} 统一处理。与凭据分支不同，OAuth 成功后的 \texttt{jwt.encode} 走 \texttt{next-auth/jwt} 的默认 \texttt{encode}，即\textbf{不进入}上述 \texttt{createSession} 分支；账户绑定与 \texttt{linkAccount} 等事件在 \texttt{events} 钩子中记录结构化日志，便于排查账号合并问题\cite{authjsdocs}。
 
-\subsection{受保护业务与判题入口的衔接}
-
-受保护页面与 Server Action 在服务端通过 \texttt{await auth()} 读取会话（例如 \path{src/app/actions/judge.ts}、\path{src/app/(protected)/dashboard/layout.tsx} 等）。判题入口据此取得 \texttt{session.user.id}，再写入 \texttt{Submission} 的外键，从而保证提交归属与认证一致。OAuth 客户端 ID、Secret 与回调 URL 等应置于环境变量，避免进入版本库\cite{owasp2021top10}。
+无论从哪条分支登录，业务侧在服务端均通过统一的 \texttt{await auth()} 读取会话（例如 \path{src/app/actions/judge.ts}、\path{src/app/(protected)/dashboard/layout.tsx} 等）。判题入口据此取得 \texttt{session.user.id}，再写入 \texttt{Submission} 的外键，从而保证提交归属与认证身份一致；同时受保护页面在 layout 层就完成会话校验，未登录用户会被框架重定向到自定义登录页 \texttt{/sign-in}，避免在每个页面或 Server Action 中重复判空。安全方面，OAuth 客户端 ID、Secret 与回调 URL 等敏感配置项均通过 \texttt{getRequiredEnv} 从环境变量读取，缺失即抛错，避免凭据进入版本库或在生产期才暴露问题\cite{owasp2021top10}。
 
 \begin{figure}[htbp]
   \centering
@@ -465,9 +463,18 @@ AI 子系统的失败兜底策略可归纳为三层。第一层是\textbf{对判
 
 对于后台侧的题目维护、用户管理和统计页面，工程中已经具备一定基础实现，但这些能力更多承担教学辅助或配套管理职责，并非本文研究重点。从毕设范围控制的角度出发，论文只需说明其存在和支撑作用，而不应在此部分投入过多篇幅。
 
-\subsection{首页入口与功能导览}
+\subsection{前端工作区组织与首页入口}
 
-平台首页用于在进入题目工作区之前承载平台定位、语言/主题切换与功能导航卡片。图~\ref{fig:home-mobile} 展示的移动端首页保持了纵向排布与核心入口可达性，图~\ref{fig:home-guide} 则以卡片形式概括了移动端适配、Docker 运行环境与语言服务等能力，与后续实现的工作区、运行环境和编辑辅助能力一一对应。
+平台前端整体采用面向任务求解的一体化工作区组织方式：在用户进入具体题目之前，由首页承载平台定位、语言/主题切换与功能导航；进入题目页后，则将题面描述、代码编辑、提交记录、题解、测试用例、提交详情以及 AI 助手面板组合到统一视图（图~\ref{fig:problem-workspace}），使学生无需在多个独立页面之间来回切换即可完成读题、编码、提交、查看判题与获取反馈这一完整过程。这种工作区式交互更符合程序设计训练的使用习惯，后文涉及的 LSP 诊断、AI 助手面板与 Diff 视图等能力也都挂载在同一工作区内，学生编码时不必跳到其他页面去触发。
+
+首页采用与工作区相互呼应的两层组织：移动端保持纵向单列、保证核心入口可达（图~\ref{fig:home-mobile}），桌面端则以卡片形式概括移动端适配、Docker 运行环境与语言服务等关键能力（图~\ref{fig:home-guide}），与后续实现的工作区、运行环境和编辑辅助能力一一对应，便于新用户在做题前先建立平台能力的整体认知。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{images/fig5-8.png}
+  \caption{题目求解主界面截图}
+  \label{fig:problem-workspace}
+\end{figure}
 
 \begin{figure}[htbp]
   \centering
@@ -487,24 +494,13 @@ AI 子系统的失败兜底策略可归纳为三层。第一层是\textbf{对判
   \caption{首页入口的移动端与桌面端展示}
 \end{figure}
 
-\subsection{国际化文案、路由与渲染策略}
+\subsection{国际化、多语言与主题一致性}
 
-除题面内容的多语言数据库字段外，平台界面文本同样需要系统化的国际化（i18n）组织，否则会出现题面是英文但按钮仍是中文等割裂体验。工程实现采用 \texttt{next-intl} 与 Next.js App Router 结合：在服务端组件中通过 \texttt{getTranslations}/\texttt{getLocale} 读取当前语言环境下的文案，在客户端组件中通过 \texttt{useTranslations}/\texttt{useLocale} 绑定交互控件标签；语言偏好通过 Cookie 等机制在请求之间保持，使刷新与导航后仍能获得一致语言上下文\cite{nextjsdocs}。
+平台的多语言能力由数据层与界面层共同构成。数据层借助 \texttt{ProblemLocalization} 按 \texttt{locale} 组织题目标题、题面描述与题解说明，使同一道题目在不同语言下呈现一致的题面结构；界面层则需要系统化的国际化（i18n）组织来承载导航、按钮、错误提示、判题状态解释、AI 面板标题等高频文本，否则会出现题面是英文但按钮仍是中文这一类割裂体验。
 
-从实现结构看，翻译资源通常以消息字典形式集中维护（例如按命名空间拆分），页面与组件只引用键路径而不硬编码长字符串。这样做的好处是：其一，新增页面时可以通过键缺失检测尽早发现漏翻译；其二，课程方若需要调整术语（例如把提交统一改为评测提交），只需改字典而不必在大量组件中全文搜索替换；其三，服务端渲染路径与客户端 hydration 路径读取同一套消息源，减少首屏与二次渲染语言不一致的问题。
+界面 i18n 工程实现采用 \texttt{next-intl} 与 Next.js App Router 结合：服务端组件通过 \texttt{getTranslations}/\texttt{getLocale} 读取当前语言环境下的文案，客户端组件通过 \texttt{useTranslations}/\texttt{useLocale} 绑定交互控件标签；语言偏好通过 Cookie 在请求之间保持，使刷新与导航后仍能获得一致的语言上下文\cite{nextjsdocs}。翻译资源以消息字典形式按命名空间集中维护，页面与组件只引用键路径而不硬编码长字符串：其一，新增页面时可借助键缺失检测尽早发现漏翻译；其二，若课程方需要调整术语（例如把"提交"统一改为"评测提交"），只需改字典而无需在大量组件中全文搜索替换；其三，服务端渲染路径与客户端 hydration 路径读取同一套消息源，可以减少首屏与二次渲染之间的语言不一致问题。
 
-国际化并不只影响导航与按钮，还会影响错误提示、判题状态解释、AI 面板标题等高频阅读文本。因此本文将其与主题切换一并视为工作区体验的基础能力。第六章交互测试中的多语言切换项（I-02）用于核验界面文本与题面语境的一致性，而不仅是验证语言切换功能本身。
-
-\subsection{前端工作区与交互组织}
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=\linewidth]{images/fig5-8.png}
-  \caption{题目求解主界面截图}
-  \label{fig:problem-workspace}
-\end{figure}
-
-当前工程采用面向任务求解的工作区组织方式，将题面描述、代码编辑、提交记录、题解、测试用例、提交详情以及 AI 助手面板组合到统一视图中。学生进入题目页后，无需在多个独立页面之间来回切换，即可完成读题、写码、提交、查看判题与获取反馈这一完整过程。这种工作区式交互更符合程序设计训练的使用习惯。
+除语言外，工作区还实现了深浅色主题切换，并使普通页面、Monaco 编辑器与差异对比编辑器使用对应主题，避免题面区域、代码区域与 Diff 视图在切换主题后出现明显割裂；这种语言与主题协同收敛的处理方式满足了长时间阅读、对比代码的基本需求。第六章交互测试中的多语言切换项（I-02）即用于核验界面文本与题面语境的一致性，而不仅是验证语言切换功能本身。
 
 \begingroup
 \small
@@ -536,7 +532,7 @@ AI 子系统的失败兜底策略可归纳为三层。第一层是\textbf{对判
 
 \subsection{Monaco 编辑器与基于 LSP 的 IDE 级语言服务}
 
-本节结合实现代码说明编辑器能力与语言服务链路，并聚焦与写码体验直接相关的关键模块。
+本节结合实现代码说明编辑器能力与语言服务链路，并聚焦与编码体验直接相关的关键模块。
 
 许多传统在线评测系统仍采用轻量文本框或简化编辑器，常见能力止步于关键字着色与基础缩进。对入门学生而言，这类编辑器在拼写错误、漏写分号、括号不匹配、类型不匹配等高频问题上缺乏即时反馈，学生往往只能依赖编译器输出的大量信息自行定位；在题目规模变大或模板宏较多时，这种反馈链路会显著拉长试错周期。工程实现策略是将浏览器端编辑体验尽量对齐本地 IDE：以微软 Monaco Editor 作为代码编辑内核\cite{monacoeditorrepo}，并通过 Language Server Protocol（LSP）与独立的 C/C++ 语言服务器通信，使补全、诊断、悬停提示、签名帮助等能力以标准化方式进入 Web 工作区\cite{lsp2024spec,monacolanguageclientrepo}。
 
@@ -555,13 +551,44 @@ AI 子系统的失败兜底策略可归纳为三层。第一层是\textbf{对判
   \label{fig:ch5-lsp-arch}
 \end{figure}
 
-\noindent\textbf{（4）与传统 OJ 编辑器的对比价值。}结合上述实现，平台在写码阶段能够提供的价值可以概括为三点：其一，\textbf{错误前移}——在提交前即可通过诊断标记暴露大量语法与类型问题，减少无意义提交；其二，\textbf{反馈可解释}——诊断与补全携带位置与符号信息，比单纯依赖编译器 stderr 更接近课堂讲解的表达习惯；其三，\textbf{工程可运维}——语言服务与业务站点解耦，可按语言横向扩容或替换版本，而不必随每次业务发版耦合发布。对本科教学场景而言，这类能力并不替代判题主链路的客观性，但能显著降低学生在模板代码附近卡住的概率，从而把更多认知资源留给算法与测试设计本身。
+\noindent\textbf{（4）与传统 OJ 编辑器的对比价值。}结合上述实现，平台在编码阶段能够提供的价值可以概括为三点：其一，\textbf{错误前移}——在提交前即可通过诊断标记暴露大量语法与类型问题，减少无意义提交；其二，\textbf{反馈可解释}——诊断与补全携带位置与符号信息，比单纯依赖编译器 stderr 更接近课堂讲解的表达习惯；其三，\textbf{工程可运维}——语言服务与业务站点解耦，可按语言横向扩容或替换版本，而不必随每次业务发版耦合发布。对本科教学场景而言，这类能力并不替代判题主链路的客观性，但能显著降低学生在模板代码附近卡住的概率，从而把更多认知资源留给算法与测试设计本身。
+
+\noindent\textbf{（5）工具栏对编辑器与 AI 能力的统一收口。}上述 LSP 能力与第~\ref{sec:ch5-ai-sse}~节所述 AI 辅助能力最终都会汇聚到题目工作区上方的代码工具栏（\path{src/features/problems/code/components/toolbar/code-toolbar.tsx}）：工具栏把语言切换、模板加载、\texttt{LSP} 状态指示灯、AI 相关按钮（\texttt{AnalyzeButton}、\texttt{OptimizeButton}、\texttt{ViewToggleButton}）与撤销/重做/格式化等基础编辑动作整合到同一行内，使学生在编码过程中无需离开视线焦点即可触发诊断、复杂度分析、优化建议与 Diff 对比等动作。表~\ref{tab:ch5-editor-toolbar} 汇总了工具栏中各能力的实现方式与教学作用，可与图~\ref{fig:problem-workspace} 所示界面对照查看。
+
+\begingroup
+\small
+\setlength{\LTleft}{0pt}
+\setlength{\LTright}{0pt}
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{P{0.22\textwidth}P{0.26\textwidth}P{0.40\textwidth}}
+\caption{编辑器辅助能力与教学作用对应关系}\label{tab:ch5-editor-toolbar}\\
+\toprule
+\textbf{辅助能力} & \textbf{实现方式} & \textbf{教学或使用价值} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{辅助能力} & \textbf{实现方式} & \textbf{教学或使用价值} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+语言切换与模板加载 & 在工具栏切换语言并同步读取对应模板代码 & 方便同一道题在 C、C++ 等不同语言间切换，降低重复初始化成本。 \\
+语言服务状态提示 & 工具栏 \texttt{LSP} 指示灯随 \texttt{WebSocket} 状态变化 & 提示语言服务是否已连通，避免断链时误判为代码无错误。 \\
+诊断波浪线与问题列表 & \texttt{clangd} 经 LSP 推送诊断，Monaco 映射为标记 & 将拼写/语法/类型错误定位到行列，减少仅依赖编译日志时的定位成本。 \\
+补全与签名帮助 & LSP 标准能力（\texttt{completion}/\texttt{signatureHelp} 等） & 提供接近本地 IDE 的输入体验，降低模板附近 API 试错的摩擦。 \\
+复杂度分析 & 见第~\ref{sec:ch5-ai-sse}~节同步辅助小节，返回结构化时间/空间复杂度 & 帮助学生在提交前形成复杂度意识，及早发现低效实现。 \\
+代码优化建议 & 见第~\ref{sec:ch5-ai-sse}~节同步辅助小节，返回独立保存的优化版本 & 为学生提供可参考的改进版本，但不强制覆盖原代码。 \\
+Diff 对比视图 & 当 \texttt{optimizedCode} 非空时启用，在普通与 Diff 编辑器间切换 & 突出修改位置与改动性质，便于学习具体优化思路。 \\
+基础编辑辅助 & 撤销、重做、格式化、复制等工具统一集成 & 提升日常编码效率，使工作区更接近实际开发环境。 \\
+\bottomrule
+\end{longtable}
+\endgroup
 
 \subsection{响应式布局与多终端适配}
 
 除桌面端常规使用场景外，当前前端实现还显式考虑了平板与移动端访问时的界面退化策略。系统通过独立的移动端检测逻辑识别当前视口宽度，并在侧边栏等高频交互区域中区分桌面端与移动端布局方式：在桌面端，工作区可维持多面板并列或可折叠侧栏的组织形式；在移动端，则优先采用抽屉式面板承载侧边内容，以避免在狭窄屏幕中出现过度拥挤的固定布局。这意味着平台虽然主要服务于桌面编程训练，但并未把小屏设备完全排除在可用范围之外。
 
-从具体使用方式上看，题目阅读、提交记录回顾、AI 问答和结果查看等信息密集型区域，在桌面端更适合并列呈现，以支持学生边看题、边写码、边复盘这种并行操作；而在平板或手机端，更合理的策略是让核心编辑区域保持主要可见，同时将次级面板收纳为按需展开的区域。当前实现采用核心内容常驻、辅助内容按需展开的方式，使同一工作区能够适配多类终端。
+从具体使用方式上看，题目阅读、提交记录回顾、AI 问答和结果查看等信息密集型区域，在桌面端更适合并列呈现，以支持学生边看题、边编码、边复盘这种并行操作；而在平板或手机端，更合理的策略是让核心编辑区域保持主要可见，同时将次级面板收纳为按需展开的区域。当前实现采用核心内容常驻、辅助内容按需展开的方式，使同一工作区能够适配多类终端。
 
 \begingroup
 \small
@@ -580,49 +607,10 @@ AI 子系统的失败兜底策略可归纳为三层。第一层是\textbf{对判
 \endhead
 \bottomrule
 \endfoot
-桌面端 & 保留多面板工作区、支持侧栏展开/收起与布局持久化 & 适合长时间读题、写码、看记录与查看 AI 反馈等复合任务并行开展。 \\
+桌面端 & 保留多面板工作区、支持侧栏展开/收起与布局持久化 & 适合长时间读题、编码、看记录与查看 AI 反馈等复合任务并行开展。 \\
 平板端 & 保留主工作区，适度压缩边栏与辅助区域显示占比 & 在有限横向空间内尽量保留阅读与编辑连续性，适合课堂演示或随身复盘。 \\
 移动端 & 将侧边内容切换为抽屉式面板或按需展开区域 & 避免固定多栏布局导致的信息拥挤，保证题面浏览、结果查看和轻量修改仍可完成。 \\
 跨尺寸切换 & 统一沿用题目语言、草稿代码与部分本地状态组织方式 & 降低因窗口尺寸变化带来的使用割裂感，使平台行为保持一致。 \\
-\bottomrule
-\end{longtable}
-\endgroup
-
-\subsection{多语言支持与主题一致性}
-
-当前系统的多语言支持是由数据层、界面层一同达成的。数据层借助 \texttt{ProblemLocalization} 依照 \texttt{locale} 来组织题目标题、题面描述、题解说明，界面层提供语言切换组件，并且通过 Cookie 记录用户偏好。测试结果显示，中文界面与英文界面能够正常切换，题面内容、主要界面文本能够保持一致。这一设计首先满足了双语题面展示的需求，还为后续扩展更多语种留存了基础结构。
-
-除语言外，当前前端还实现了深浅色主题切换，并使普通页面、Monaco 编辑器和差异对比编辑器使用对应主题。这样可以避免题面区域、代码区域和 Diff 视图在切换主题后出现明显割裂，满足长时间阅读和对比代码的基本需求。
-
-\subsection{编辑器工具栏的能力汇总}
-
-代码工具栏（\path{src/features/problems/code/components/toolbar/code-toolbar.tsx}）将语言服务状态、AI 辅助按钮与基础编辑动作整合到题目工作区上方一行内，使学生在写码过程中无需离开视线焦点即可触发分析与优化。其中 AI 相关按钮（\texttt{AnalyzeButton}、\texttt{OptimizeButton}、\texttt{ViewToggleButton}）的具体实现已在第5.7节详述，下表用于汇总工具栏各能力之间的关系，便于与图~\ref{fig:problem-workspace} 所示实际界面对照。
-
-\begingroup
-\small
-\setlength{\LTleft}{0pt}
-\setlength{\LTright}{0pt}
-\setlength{\tabcolsep}{3pt}
-\begin{longtable}{P{0.22\textwidth}P{0.26\textwidth}P{0.40\textwidth}}
-\caption{编辑器辅助能力与教学作用对应关系}\\
-\toprule
-\textbf{辅助能力} & \textbf{实现方式} & \textbf{教学或使用价值} \\
-\midrule
-\endfirsthead
-\toprule
-\textbf{辅助能力} & \textbf{实现方式} & \textbf{教学或使用价值} \\
-\midrule
-\endhead
-\bottomrule
-\endfoot
-语言切换与模板加载 & 在工具栏切换语言并同步读取对应模板代码 & 方便同一道题在 C、C++ 等不同语言间切换，降低重复初始化成本。 \\
-语言服务状态提示 & 工具栏 \texttt{LSP} 指示灯随 \texttt{WebSocket} 状态变化 & 提示语言服务是否已连通，避免断链时误判为代码无错误。 \\
-诊断波浪线与问题列表 & \texttt{clangd} 经 LSP 推送诊断，Monaco 映射为标记 & 将拼写/语法/类型错误定位到行列，减少仅依赖编译日志时的定位成本。 \\
-补全与签名帮助 & LSP 标准能力（\texttt{completion}/\texttt{signatureHelp} 等） & 提供接近本地 IDE 的输入体验，降低模板附近 API 试错的摩擦。 \\
-复杂度分析 & 见第5.7节同步辅助小节，返回结构化时间/空间复杂度 & 帮助学生在提交前形成复杂度意识，及早发现低效实现。 \\
-代码优化建议 & 见第5.7节同步辅助小节，返回独立保存的优化版本 & 为学生提供可参考的改进版本，但不强制覆盖原代码。 \\
-Diff 对比视图 & 当 \texttt{optimizedCode} 非空时启用，在普通与 Diff 编辑器间切换 & 突出修改位置与改动性质，便于学习具体优化思路。 \\
-基础编辑辅助 & 撤销、重做、格式化、复制等工具统一集成 & 提升日常编码效率，使工作区更接近实际开发环境。 \\
 \bottomrule
 \end{longtable}
 \endgroup
