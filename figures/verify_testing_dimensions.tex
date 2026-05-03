@@ -9,9 +9,5 @@
   \node[ax, right=0.8cm of J] (A) {AI 反馈\\可用性};
   \node[ax, right=0.8cm of A] (U) {交互与\\多终端};
   \node[ax, right=0.8cm of U] (E) {工程构建\\与静态检查};
-  \node[draw, dashed, rounded corners=3pt, inner sep=8pt, below=1.1cm of $(J)!0.5!(A)$, align=center, minimum width=10cm, fill=yellow!8] (N) {性能压测、成本与能耗、教师侧治理等：本文\textbf{未展开系统实验}，留待后续工作};
   \draw[arr] (F) -- (J); \draw[arr] (J) -- (A); \draw[arr] (A) -- (U); \draw[arr] (U) -- (E);
-  \draw[arr, dashed] (J.south) -- (N.north west);
-  \draw[arr, dashed] (A.south) -- (N.north);
-  \draw[arr, dashed] (U.south) -- (N.north east);
 \end{tikzpicture}
