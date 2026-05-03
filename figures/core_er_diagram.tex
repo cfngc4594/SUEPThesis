@@ -15,5 +15,6 @@
   \draw[-{Stealth}] (P) -- (T);
   \draw[-{Stealth}] (S) -- (TR);
   \draw[-{Stealth}] (T) -- (TR);
-  \draw[-{Stealth}, dashed] (S) -- node[above, font=\scriptsize] {1:1} (CA);
+  \draw[-{Stealth}, dashed] (S) to[bend right=28]
+        node[below, font=\scriptsize, pos=0.5] {1:1} (CA);
 \end{tikzpicture}

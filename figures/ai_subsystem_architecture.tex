@@ -1,49 +1,65 @@
 % AI 辅助子系统总体架构（三类入口 + 统一模型层 + OpenAI 兼容 Provider + 远端模型 + 数据库）
 \begin{tikzpicture}[
   font=\scriptsize\sffamily,
-  box/.style={draw, rounded corners=2pt, align=center, inner sep=5pt, minimum width=2.6cm},
-  small/.style={draw, rounded corners=2pt, align=center, inner sep=4pt, minimum width=2.4cm, font=\tiny\sffamily},
+  box/.style={draw, rounded corners=2pt, align=center, inner sep=6pt,
+              minimum width=3.6cm, minimum height=1.05cm},
+  small/.style={draw, rounded corners=2pt, align=center, inner sep=5pt,
+                minimum width=3.0cm, minimum height=1.05cm, font=\tiny\sffamily},
   arr/.style={-{Stealth[length=2mm]}, thick},
-  arrd/.style={-{Stealth[length=2mm]}, thick, dashed}
+  arrd/.style={-{Stealth[length=2mm]}, thick, dashed},
+  lbl/.style={font=\tiny, fill=white, inner sep=1pt}
 ]
-  % 第一层：三类前端入口
-  \node[small, fill=blue!8] (E1) {提交后异步分析\\\texttt{analyze-code.ts}};
-  \node[small, fill=blue!8, right=0.45cm of E1] (E2) {编辑期同步辅助\\\texttt{analyze.ts} / \texttt{ai-improve.ts}};
-  \node[small, fill=blue!8, right=0.45cm of E2] (E3) {上下文聊天\\\texttt{api/chat/route.ts} + \texttt{useChat}};
+  % 第一层：三类前端入口（横向，加大间距）
+  \node[small, fill=blue!8]                         (E1) {提交后异步分析\\\texttt{analyze-code.ts}};
+  \node[small, fill=blue!8, right=0.9cm of E1]      (E2) {编辑期同步辅助\\\texttt{analyze.ts} / \texttt{ai-improve.ts}};
+  \node[small, fill=blue!8, right=0.9cm of E2]      (E3) {上下文聊天\\\texttt{api/chat/route.ts} + \texttt{useChat}};
 
-  % 第二层：AI SDK 统一抽象
-  \node[box, fill=green!10, below=0.9cm of E2] (SDK) {Vercel AI SDK 统一模型层\\\texttt{generateText} / \texttt{streamText} / \texttt{tool}};
+  % 右侧：前端面板（与 E3 同行右侧，留出明显间距）
+  \node[small, fill=cyan!10, right=1.6cm of E3]     (UI) {前端面板\\雷达图 / Diff / 流式聊天};
+
+  % 第二层：AI SDK 统一模型层（在 E2 正下方，主纵线起点）
+  \node[box, fill=green!10, below=1.6cm of E2]      (SDK)
+        {Vercel AI SDK 统一模型层\\\texttt{generateText} / \texttt{streamText} / \texttt{tool}};
 
   % 第三层：Provider
-  \node[box, fill=orange!10, below=0.7cm of SDK] (PR) {OpenAI 兼容 Provider\\\texttt{@ai-sdk/openai-compatible}\\\texttt{lib/ai.ts}};
+  \node[box, fill=orange!10, below=1.4cm of SDK]    (PR)
+        {OpenAI 兼容 Provider\\\texttt{@ai-sdk/openai-compatible}\\\texttt{lib/ai.ts}};
 
-  % 第四层：远端模型（DeepSeek 等）
-  \node[box, fill=purple!10, below=0.7cm of PR] (M) {远端大模型服务\\（DeepSeek 等 OpenAI 兼容端点）};
+  % 第四层：远端大模型
+  \node[box, fill=purple!10, below=1.4cm of PR]     (M)
+        {远端大模型服务\\（DeepSeek 等 OpenAI 兼容端点）};
 
-  % 右侧：数据库与前端展示
-  \node[box, fill=gray!12, right=1.2cm of PR] (DB) {PostgreSQL\\\texttt{CodeAnalysis} 等表};
-  \node[small, fill=cyan!10, right=0.8cm of E3] (UI) {前端面板\\雷达图 / Diff / 流式聊天};
+  % 右侧：数据库（与 PR 同高度，远离主纵线）
+  \node[box, fill=gray!12, right=2.6cm of PR]       (DB)
+        {PostgreSQL\\\texttt{CodeAnalysis} 等表};
 
-  % 三入口 → SDK
-  \draw[arr] (E1.south) -- ++(0,-0.25) -| (SDK.north);
+  % 三入口 -> SDK：每条都先下行再水平进入 SDK 顶部
+  \draw[arr] (E1.south) -- ++(0,-0.5) -| (SDK.north);
   \draw[arr] (E2.south) -- (SDK.north);
-  \draw[arr] (E3.south) -- ++(0,-0.25) -| (SDK.north);
+  \draw[arr] (E3.south) -- ++(0,-0.5) -| (SDK.north);
 
-  % SDK → Provider → Model
-  \draw[arr] (SDK) -- node[right, font=\tiny]{HTTPS / OpenAI 兼容协议} (PR);
-  \draw[arr] (PR) -- node[right, font=\tiny]{Chat Completions} (M);
+  % SDK <-> PR：双向，去程左侧实线，回程右侧虚线
+  \draw[arr]  ([xshift=-7pt]SDK.south) -- node[lbl, left]{HTTPS / OpenAI 兼容协议}
+                                          ([xshift=-7pt]PR.north);
+  \draw[arrd] ([xshift= 7pt]PR.north)  -- node[lbl, right]{异步 chunk}
+                                          ([xshift= 7pt]SDK.south);
 
-  % 反向：模型流式回传
-  \draw[arrd] (M.east) to[bend right=20] node[right, font=\tiny]{增量 token} (PR.east);
-  \draw[arrd] (PR.east) to[bend right=20] node[right, font=\tiny]{异步 chunk} (SDK.east);
+  % PR <-> M：双向，去程左侧实线，回程右侧虚线
+  \draw[arr]  ([xshift=-7pt]PR.south)  -- node[lbl, left]{Chat Completions}
+                                          ([xshift=-7pt]M.north);
+  \draw[arrd] ([xshift= 7pt]M.north)   -- node[lbl, right]{增量 token}
+                                          ([xshift= 7pt]PR.south);
 
-  % E1 → DB（落库）
-  \draw[arr] (E1.east) -- ++(0.3,0) |- node[right, font=\tiny, near start]{结构化结果落库} (DB.west);
-  % E2 → UI（同步返回）
-  \draw[arr] (E2.east) -- ++(0.2,0) -- ++(0,0.0) -| (UI.south);
-  % E3 → UI（SSE 流式）
-  \draw[arrd] (E3.east) -- node[above, font=\tiny]{SSE 风格 Data Stream} (UI.west);
+  % E1 -> DB：从 E1 出发先向上再水平向右接入 DB 顶部
+  \draw[arr]  (E1.north) -- ++(0,0.55) -| node[lbl, above, pos=0.25]{结构化结果落库}
+                                           (DB.north);
 
-  % UI → DB 读取
-  \draw[arrd] (UI.south east) to[bend left=20] node[right, font=\tiny]{读取分析记录} (DB.north east);
+  % E2 -> UI：编辑期同步返回（走顶部水平线）
+  \draw[arr]  (E2.north) -- ++(0,0.25) -| (UI.north);
+
+  % E3 -> UI：SSE 流式（同行水平线）
+  \draw[arrd] (E3) -- node[lbl, above]{SSE 风格 Data Stream} (UI);
+
+  % UI -> DB：读取分析记录
+  \draw[arrd] (UI.south) -- node[lbl, right, pos=0.5]{读取分析记录} (DB.east);
 \end{tikzpicture}

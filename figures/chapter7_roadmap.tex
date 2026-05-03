@@ -10,13 +10,18 @@
   \coordinate (p2) at (3.5,0);
   \coordinate (p3) at (6,0);
   \coordinate (p4) at (8.5,0);
-  \foreach \x/\t in {1/MVP,3.5/异步队列,6/K8s 编排,8.5/课程化治理} \node[below=0.12cm, font=\scriptsize] at (\x,0) {\t};
   \node[m] at (p1) {};
   \node[m] at (p2) {};
   \node[m] at (p3) {};
   \node[m] at (p4) {};
+  % 上方：当前阶段对应的能力标签
   \node[lbl, above=0.55cm of p1] {判题主链\\容器隔离};
   \node[lbl, above=0.55cm of p2] {独立 Worker\\削峰填谷};
   \node[lbl, above=0.55cm of p3] {多节点\\弹性伸缩};
   \node[lbl, above=0.55cm of p4] {作业/成绩\\教师审阅};
+  % 下方：里程碑名称（位于圆圈下方足够距离，避免遮挡）
+  \node[lbl, below=0.55cm of p1] {MVP};
+  \node[lbl, below=0.55cm of p2] {异步队列};
+  \node[lbl, below=0.55cm of p3] {K8s 编排};
+  \node[lbl, below=0.55cm of p4] {课程化治理};
 \end{tikzpicture}

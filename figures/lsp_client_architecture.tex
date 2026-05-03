@@ -1,17 +1,30 @@
 % Monaco + WebSocket + 容器内 clangd（与 judge4c 工程一致的概念结构）
 \begin{tikzpicture}[
   font=\scriptsize\sffamily,
-  box/.style={draw, rounded corners=2pt, align=center, inner sep=5pt, minimum width=2.4cm},
-  arr/.style={-{Stealth[length=2mm]}, thick}
+  box/.style={draw, rounded corners=2pt, align=center, inner sep=5pt,
+              minimum width=2.6cm, minimum height=1.05cm},
+  arr/.style={-{Stealth[length=2mm]}, thick},
+  lbl/.style={font=\tiny, fill=white, inner sep=1pt}
 ]
-  \node[box, fill=blue!8] (M) {浏览器内\\Monaco Editor};
-  \node[box, fill=green!10, right=1.0cm of M] (C) {\texttt{MonacoLanguageClient}\\\texttt{vscode-ws-jsonrpc}};
-  \node[box, fill=orange!10, right=1.0cm of C] (P) {语言服务容器\\jsonrpc-ws-proxy};
-  \node[box, fill=purple!8, right=1.0cm of P] (D) {Clangd\\(C/C++ LSP)};
-  \node[box, fill=gray!12, below=0.9cm of $(M)!0.5!(C)$] (DB) {数据库\\\texttt{LanguageServerConfig}};
-  \draw[arr] (DB) -- node[left, font=\tiny]{SSR 注入端点} (M);
-  \draw[arr] (M) -- node[above, font=\tiny]{LSP JSON-RPC} (C);
-  \draw[arr] (C) -- node[above, font=\tiny]{WebSocket} (P);
-  \draw[arr] (P) -- node[above, font=\tiny]{stdio 转发} (D);
-  \draw[arr, dashed] (D) -- ++(0,-0.65) -| node[near start, below, font=\tiny]{诊断/补全/签名等} (M.south);
+  % 主链路：四个节点横向排列，加大间距以容纳标签
+  \node[box, fill=blue!8]                          (M)  {浏览器内\\Monaco Editor};
+  \node[box, fill=green!10,  right=1.3cm of M]     (C)  {\texttt{MonacoLanguageClient}\\\texttt{vscode-ws-jsonrpc}};
+  \node[box, fill=orange!10, right=1.3cm of C]     (P)  {语言服务容器\\jsonrpc-ws-proxy};
+  \node[box, fill=purple!8,  right=1.3cm of P]     (D)  {Clangd\\(C/C++ LSP)};
+
+  % 数据库：放在 M 正下方（避开右侧反馈线路径），留足距离
+  \node[box, fill=gray!12, below=1.3cm of M] (DB) {数据库\\\texttt{LanguageServerConfig}};
+
+  % 主链路上方：从左到右的请求方向
+  \draw[arr] (M) -- node[lbl, above]{LSP JSON-RPC} (C);
+  \draw[arr] (C) -- node[lbl, above]{WebSocket}    (P);
+  \draw[arr] (P) -- node[lbl, above]{stdio 转发}   (D);
+
+  % 数据库 -> Monaco（SSR 注入端点）
+  \draw[arr] (DB) -- node[lbl, right]{SSR 注入端点} (M);
+
+  % 反馈：Clangd -> Monaco（诊断/补全/签名等），从 D 南下绕到 M 南端
+  \draw[arr, dashed] (D.south) -- ++(0,-1.0)
+                                -| node[lbl, below, pos=0.25]{诊断/补全/签名等}
+                                   (M.south);
 \end{tikzpicture}

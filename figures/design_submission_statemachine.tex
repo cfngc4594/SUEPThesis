@@ -10,20 +10,20 @@
   \node[s, below=0.9cm of CP, fill=red!10] (CE) {CE};
   \node[s, right=of CP, fill=green!12] (CS) {CS};
   \node[s, right=of CS, fill=yellow!15] (RU) {RU};
-  \node[s, above right=0.6cm and 0.4cm of RU, fill=green!20] (AC) {AC};
-  \node[s, right=0.2cm of RU, fill=red!8] (WA) {WA};
-  \node[s, below=0.55cm of RU, fill=red!8] (RE) {RE};
-  \node[s, below right=0.55cm and 0.2cm of RU, fill=red!8] (TLE) {TLE};
-  \node[s, below=0.55cm of CE, fill=purple!10] (SE) {SE};
+  \node[s, above right=1.2cm and 0.7cm of RU, fill=green!20] (AC) {AC};
+  \node[s, right=0.6cm of RU, fill=red!8] (WA) {WA};
+  \node[s, below=0.85cm of RU, fill=red!8] (RE) {RE};
+  \node[s, below right=1.2cm and 0.7cm of RU, fill=red!8] (TLE) {TLE};
+  \node[s, below=0.7cm of CE, fill=purple!10] (SE) {SE};
 
   \draw[->] (PD) -- (QD);
   \draw[->] (QD) -- (CP);
   \draw[->] (CP) -- node[left, font=\tiny]{编译失败} (CE);
   \draw[->] (CP) -- node[above, font=\tiny]{成功} (CS);
   \draw[->] (CS) -- (RU);
-  \draw[->] (RU) -- node[above, font=\tiny]{全过} (AC);
+  \draw[->] (RU) -- node[sloped, above, font=\tiny]{全过} (AC);
   \draw[->] (RU) -- node[above, font=\tiny] {WA} (WA);
   \draw[->] (RU) -- node[left, font=\tiny] {RE} (RE);
-  \draw[->] (RU) -- node[right, font=\tiny]{TLE} (TLE);
+  \draw[->] (RU) -- node[sloped, below, font=\tiny]{TLE} (TLE);
   \draw[->, dashed] (CP) -- ++(-1.6,-1.1) |- node[near start, above, font=\tiny]{环境故障} (SE);
 \end{tikzpicture}
