@@ -7,7 +7,7 @@
 \begin{figure}[htbp]
   \centering
   \resizebox{\linewidth}{!}{\input{figures/system_architecture.tex}}
-  \caption{系统总体架构图}
+  \caption{系统总体架构示意}
   \label{fig:ch5-system-arch}
 \end{figure}
 
@@ -112,7 +112,7 @@ Auth.js 配置中，\texttt{callbacks.jwt} 在检测到 \texttt{account.provider
 \begin{figure}[htbp]
   \centering
   \resizebox{\linewidth}{!}{\input{figures/core_er_diagram.tex}}
-  \caption{数据库实体关系图}
+  \caption{核心数据表实体关系示意}
   \label{fig:ch5-er}
 \end{figure}
 
@@ -162,7 +162,7 @@ Code\allowbreak Analysis & id, submissionId, status, timeComplexity, spaceComple
 \setlength{\LTright}{0pt}
 \setlength{\tabcolsep}{3pt}
 \begin{longtable}{P{0.10\textwidth}P{0.20\textwidth}P{0.56\textwidth}}
-\caption{Submission 状态码及含义说明表}\\
+\caption{Submission 状态码及含义说明}\\
 \toprule
 \textbf{状态码} & \textbf{含义} & \textbf{触发阶段/说明} \\
 \midrule
@@ -301,9 +301,9 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
 
 除“编译失败、答案错误、运行超时”等学生侧常见结果外，工程实现还必须覆盖一类\textbf{系统侧异常}：例如 Docker 守护进程不可用、镜像缺失、题目或测试数据配置不完整、远程 Docker 连接失败等。此类问题若不在状态模型中单独区分，容易被误展示为普通 \texttt{CE}/\texttt{WA}，从而误导学生把环境问题当作算法问题反复修改。
 
-当前实现将部分系统级失败映射为 \texttt{SE}（System Error）状态，并在 \texttt{Submission.message} 中写入可读的错误摘要，同时仍尽量保留已创建的提交记录，使前端能够展示“失败但可追踪”。这与第4章状态流转设计相呼应：受理记录一旦生成，就应成为后续排错与复盘的锚点。与此同时，编译与运行阶段的输出在落库前进行长度截断，以避免极端日志撑爆数据库字段或拖慢页面渲染；在教学解释上，这一策略应被理解为“保留足够定位信息，而非无损保存完整 stderr”。
+当前实现将部分系统级失败映射为 \texttt{SE}（System Error）状态，并在 \texttt{Submission.message} 中写入可读的错误摘要，同时仍尽量保留已创建的提交记录，使前端能够展示“失败但可追踪”。这与第四章状态流转设计相呼应：受理记录一旦生成，就应成为后续排错与复盘的锚点。与此同时，编译与运行阶段的输出在落库前进行长度截断，以避免极端日志撑爆数据库字段或拖慢页面渲染；在教学解释上，这一策略应被理解为“保留足够定位信息，而非无损保存完整 stderr”。
 
-从可观测性角度看，判题链路至少应能在日志中关联“用户—题目—提交 id—容器 id（若有）”这一最小追踪链。原型阶段即使未接入分布式追踪系统，也应在关键异常分支打印结构化日志字段，便于在课程集中提交时快速判断是“队列/worker 能力不足”还是“单机 Docker 资源耗尽”。后续若引入异步 worker，还可把同一提交 id 作为跨服务日志关联键，向第4章所述编排演进路径靠拢\cite{kubernetesdocs}。
+从可观测性角度看，判题链路至少应能在日志中关联“用户—题目—提交 id—容器 id（若有）”这一最小追踪链。原型阶段即使未接入分布式追踪系统，也应在关键异常分支打印结构化日志字段，便于在课程集中提交时快速判断是“队列/worker 能力不足”还是“单机 Docker 资源耗尽”。后续若引入异步 worker，还可把同一提交 id 作为跨服务日志关联键，向第四章所述编排演进路径靠拢\cite{kubernetesdocs}。
 
 \begingroup
 \small
@@ -333,7 +333,7 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
 
 \section{AI 辅助子系统的流式响应与上下文构造实现}
 
-AI 辅助子系统并非主判题链路的一部分，而是围绕“客观判题已完成”和“正在编辑代码”两类时机为学生提供解释性、提示性与对话性支持的附加能力。本节按“总体架构—模型抽象—流式响应—结构化落库—编辑期同步辅助—上下文构造—边界与兜底”七个层次展开。其中，流式响应小节专门讨论实现工程中最关键的 SSE 风格数据流细节；这一细节直接决定了上下文聊天面板能否在网页上做到“逐字浮现”而非“整段等待”，并在概念上与第4章异步判题的状态推送同属长连接增量推送范畴。
+AI 辅助子系统并非主判题链路的一部分，而是围绕“客观判题已完成”和“正在编辑代码”两类时机为学生提供解释性、提示性与对话性支持的附加能力。本节按“总体架构—模型抽象—流式响应—结构化落库—编辑期同步辅助—上下文构造—边界与兜底”七个层次展开。其中，流式响应小节专门讨论实现工程中最关键的 SSE 风格数据流细节；这一细节直接决定了上下文聊天面板能否在网页上做到“逐字浮现”而非“整段等待”，并在概念上与第四章异步判题的状态推送同属长连接增量推送范畴。
 
 \subsection{子系统总体架构与三类入口}
 
@@ -436,7 +436,7 @@ AI 辅助子系统并非主判题链路的一部分，而是围绕“客观判�
 
 代码优化按钮则在 \texttt{ai-improve.ts} 中拼装一段更长的提示词：除当前代码与可选错误信息外，还从数据库查询当前题目的英文描述（缺失时回退到中文）以及该题目下所有语言的模板代码，并在末尾要求模型仅返回 \texttt{\{ optimizedCode, explanation, issuesFixed \}} 形式的 JSON。值得注意的是，模型实际输出常常包含 \texttt{```json ... ```} 围栏，因此实现先用正则 \texttt{/```(?:json)?\textbackslash s*([\textbackslash s\textbackslash S]*?)```/} 提取代码块内 JSON，再回退到“整段中第一段花括号包裹文本”的宽松匹配，最后用 \texttt{OptimizeCodeOutputSchema.safeParse} 做 zod 校验。这种“宽容解析 + 严格校验”的两段式处理避免了把模型偶发的 Markdown 包装直接当作错误抛回前端。
 
-返回到前端后，优化结果不会静默覆盖原代码，而是被存入 \texttt{useProblemEditorStore} 的 \texttt{optimizedCode} 字段；只有当 \texttt{optimizedCode} 非空时，工具栏才会出现 \texttt{ViewToggleButton}，允许学生在 Monaco 普通编辑器与 Diff 编辑器之间切换查看改动。这种“原代码不可破坏、改动显式可见、最终由学生决定是否采纳”的处理方式与第3章中“AI 可控性”非功能要求一致。
+返回到前端后，优化结果不会静默覆盖原代码，而是被存入 \texttt{useProblemEditorStore} 的 \texttt{optimizedCode} 字段；只有当 \texttt{optimizedCode} 非空时，工具栏才会出现 \texttt{ViewToggleButton}，允许学生在 Monaco 普通编辑器与 Diff 编辑器之间切换查看改动。这种“原代码不可破坏、改动显式可见、最终由学生决定是否采纳”的处理方式与第三章中“AI 可控性”非功能要求一致。
 
 \subsection{聊天面板的上下文构造与题面注入}
 
@@ -450,7 +450,7 @@ AI 辅助子系统并非主判题链路的一部分，而是围绕“客观判�
 
 AI 子系统的失败兜底策略可归纳为三层。第一层是\textbf{对判题主链路无影响}：所有 AI 调用都以 Server Action 或独立 Route Handler 形式存在，不在 \texttt{judge.ts} 主链路上同步等待，因而即使模型不可达、配额耗尽或返回格式错误，学生仍能完成提交并获得标准 \texttt{AC}/\texttt{WA}/\texttt{TLE} 等结果。第二层是\textbf{结构化字段降级}：在 \texttt{analyze-code.ts} 中所有 zod 字段均为 \texttt{optional}，意味着若模型返回缺少某些维度，最终落库的就是“部分字段为空”而不是“整条记录写入失败”，前端只需对空值显示占位即可，不影响其他字段渲染。第三层是\textbf{状态可观测}：所有失败分支都把状态写为 \texttt{FAILED} 并保留时间戳，配合后台日志可以快速判断是“调用前异常”“模型超时”还是“工具回调内 SQL 失败”。
 
-教学边界方面，本子系统遵守第3章给出的“AI 可控性”原则：聊天面板的 system prompt 强调“为用户语言回复并保持简洁”而非“直接给出完整答案”；优化代码不会覆盖原代码，且需用户主动按按钮才会触发；分析结果与客观判题状态分离存储，从数据模型层面阻断了“AI 评分污染判题结果”的可能。这些工程化处理使 AI 在系统中始终扮演“解释与提示”的角色，而非“裁判”。
+教学边界方面，本子系统遵守第三章给出的“AI 可控性”原则：聊天面板的 system prompt 强调“为用户语言回复并保持简洁”而非“直接给出完整答案”；优化代码不会覆盖原代码，且需用户主动按按钮才会触发；分析结果与客观判题状态分离存储，从数据模型层面阻断了“AI 评分污染判题结果”的可能。这些工程化处理使 AI 在系统中始终扮演“解释与提示”的角色，而非“裁判”。
 
 \begin{figure}[htbp]
   \centering
@@ -493,7 +493,7 @@ AI 子系统的失败兜底策略可归纳为三层。第一层是\textbf{对判
 
 从实现结构看，翻译资源通常以消息字典形式集中维护（例如按命名空间拆分），页面与组件只引用键路径而不硬编码长字符串。这样做的好处是：其一，新增页面时可以通过键缺失检测尽早发现漏翻译；其二，课程方若需要调整术语（例如把“提交”统一改为“评测提交”），只需改字典而不必在大量组件中全文搜索替换；其三，服务端渲染路径与客户端 hydration 路径读取同一套消息源，减少“首屏与二次渲染语言不一致”的问题。
 
-国际化并不只影响导航与按钮，还会影响错误提示、判题状态解释、AI 面板标题等高频阅读文本。因此本文将其与主题切换一并视为工作区体验的基础能力。第6章交互测试中的多语言切换项（I-02）用于核验界面文本与题面语境的一致性，而不仅是验证语言切换功能本身。
+国际化并不只影响导航与按钮，还会影响错误提示、判题状态解释、AI 面板标题等高频阅读文本。因此本文将其与主题切换一并视为工作区体验的基础能力。第六章交互测试中的多语言切换项（I-02）用于核验界面文本与题面语境的一致性，而不仅是验证语言切换功能本身。
 
 \subsection{前端工作区与交互组织}
 
@@ -642,13 +642,13 @@ Diff 对比视图 & 当 \texttt{optimizedCode} 非空时启用，在普通与 Di
 
 \section{实现现状与后续演进说明}
 
-本节区分当前仓库已落地行为与第4章设计中的演进项，便于读者理解平台在原型阶段已经稳定实现的能力，以及哪些方向已为后续工作预留接口、但当前并未以独立服务或消息队列形式出现。
+本节区分当前仓库已落地行为与第四章设计中的演进项，便于读者理解平台在原型阶段已经稳定实现的能力，以及哪些方向已为后续工作预留接口、但当前并未以独立服务或消息队列形式出现。
 
-判题入口 \texttt{judge}（\path{src/app/actions/judge.ts}）在一次 Server Action 调用内依次完成环境准备、\texttt{compile}、\texttt{run} 与结果写回，并在末尾调用 \texttt{revalidatePath} 使前端获得更新。这与第4章所述“提交入队、后台 worker、WebSocket 推送判题进度”的异步路线相比，属于\textbf{请求内同步判题}实现：实现链路较短、调试路径清晰，但在高峰负载下判题耗时仍占用 Web 进程时间片。Prisma 枚举 \texttt{Status} 中已包含 \texttt{PD}、\texttt{QD} 等可表达排队语义的取值，数据层为后续接入队列预留了字段空间，但主线流程当前并未启动独立队列消费者。
+判题入口 \texttt{judge}（\path{src/app/actions/judge.ts}）在一次 Server Action 调用内依次完成环境准备、\texttt{compile}、\texttt{run} 与结果写回，并在末尾调用 \texttt{revalidatePath} 使前端获得更新。这与第四章所述“提交入队、后台 worker、WebSocket 推送判题进度”的异步路线相比，属于\textbf{请求内同步判题}实现：实现链路较短、调试路径清晰，但在高峰负载下判题耗时仍占用 Web 进程时间片。Prisma 枚举 \texttt{Status} 中已包含 \texttt{PD}、\texttt{QD} 等可表达排队语义的取值，数据层为后续接入队列预留了字段空间，但主线流程当前并未启动独立队列消费者。
 
-与主判题不同，\texttt{CodeAnalysis} 使用独立状态枚举（如 \texttt{QUEUED}、\texttt{PROCESSING} 等），由 \texttt{analyzeCode} 在客观判题完成后异步触发，体现“主结果确定、解释层后置”的拆分方式。仓库中的 WebSocket 现用于语言服务（LSP），而非判题状态推送；若未来按第4章设计接入判题事件通道，应避免与 LSP 长连接混在同一套路由语义中。
+与主判题不同，\texttt{CodeAnalysis} 使用独立状态枚举（如 \texttt{QUEUED}、\texttt{PROCESSING} 等），由 \texttt{analyzeCode} 在客观判题完成后异步触发，体现“主结果确定、解释层后置”的拆分方式。仓库中的 WebSocket 现用于语言服务（LSP），而非判题状态推送；若未来按第四章设计接入判题事件通道，应避免与 LSP 长连接混在同一套路由语义中。
 
-第4章给出了课程、作业及课程级运行环境配置的实体建议，但当前 \texttt{schema.prisma} 尚未出现 \texttt{Course}/\texttt{Assignment} 等表，相关能力属于设计预留。ACM/ICPC、OI 等判题模式及额外中间实体（如按场次拆表的 Judge/JudgeRun）亦未在本仓库实现；若后续需要，应在数据模型与判题调度层单独立项扩展，而不宜在本文中写成“已具备”。现有题库、\texttt{Submission}、\texttt{TestcaseResult} 与 \texttt{CodeAnalysis} 已形成可运行的数据闭环，可作为课程化扩展时挂载作业与成绩归因的基础；Docker 与远程 Docker 配置则支撑“执行环境与 Web 分层”的延续演进。
+第四章给出了课程、作业及课程级运行环境配置的实体建议，但当前 \texttt{schema.prisma} 尚未出现 \texttt{Course}/\texttt{Assignment} 等表，相关能力属于设计预留。ACM/ICPC、OI 等判题模式及额外中间实体（如按场次拆表的 Judge/JudgeRun）亦未在本仓库实现；若后续需要，应在数据模型与判题调度层单独立项扩展，而不宜在本文中写成“已具备”。现有题库、\texttt{Submission}、\texttt{TestcaseResult} 与 \texttt{CodeAnalysis} 已形成可运行的数据闭环，可作为课程化扩展时挂载作业与成绩归因的基础；Docker 与远程 Docker 配置则支撑“执行环境与 Web 分层”的延续演进。
 
 \section{本章小结}
 

@@ -12,7 +12,7 @@
 \setlength{\LTright}{0pt}
 \setlength{\tabcolsep}{3pt}
 \begin{longtable}{P{0.18\textwidth}P{0.72\textwidth}}
-\caption{测试环境配置表}\\
+\caption{测试环境配置}\\
 \toprule
 \textbf{项目} & \textbf{配置} \\
 \midrule
@@ -85,7 +85,7 @@ F-05 & 代码提交 & 用户已登录且题目可访问 & 输入代码并点击�
 F-06 & 提交记录查看 & 至少已完成一次代码提交 & 打开提交记录面板或提交详情面板 & 可查看提交时间、状态与部分详情信息 & 通过，可查看 AC、CE、WA、RE、TLE 等多种状态记录 & 见图~\ref{fig:ch5-submission-list} \\
 F-07 & AI 辅助反馈展示 & 提交已触发 AI 分析且分析完成 & 打开 AI 面板或提交详情中的分析区域 & 可查看复杂度、评分和反馈文本 & 通过，可正常展示雷达图、总分、复杂度与反馈文本 & 见图~\ref{fig:ch5-ai-feedback}、图~\ref{fig:ch6-ai-wa} 及图~\ref{fig:ch6-ai-readability} \\
 F-08 & 题库管理页访问 & 管理员账号可正常登录 & 访问后台题库管理页面 & 题目管理列表可正常展示 & 通过，后台题目列表与操作按钮可正常显示 & 见图~\ref{fig:ch5-problem-admin} \\
-F-09 & 语言服务连通与诊断 & 本地 Compose 已启动 \texttt{lsp-c}/\texttt{lsp-cpp} 且健康检查通过 & 打开题目页，观察工具栏 LSP 状态；在编辑器中引入明显语法/类型错误 & 状态指示进入就绪态，错误处出现诊断标记并可随修改更新 & 通过，行为与第5章图~\ref{fig:ch5-lsp-arch} 所述链路一致，界面级证据见图~\ref{fig:ch6-lsp} \\
+F-09 & 语言服务连通与诊断 & 本地 Compose 已启动 \texttt{lsp-c}/\texttt{lsp-cpp} 且健康检查通过 & 打开题目页，观察工具栏 LSP 状态；在编辑器中引入明显语法/类型错误 & 状态指示进入就绪态，错误处出现诊断标记并可随修改更新 & 通过，行为与第五章图~\ref{fig:ch5-lsp-arch} 所述链路一致，界面级证据见图~\ref{fig:ch6-lsp} \\
 F-10 & AI 聊天 SSE 流式响应 & 已配置 \texttt{AI\_API\_KEY}、\allowbreak\texttt{AI\_BASE\_URL}、\allowbreak\texttt{AI\_MODEL} 三项环境变量 & 打开题目页 Bot 面板提交一条问题，同时在 Network 面板观察 \texttt{/api/chat} 请求 & 响应在生成途中即开始向页面增量写入文本，请求保持 pending 直至流结束，与图~\ref{fig:ch5-ai-sse-seq} 时序一致 & 通过，回复呈现“逐段浮现”而非整段一次性出现 \\
 \bottomrule
 \end{longtable}
@@ -94,7 +94,7 @@ F-10 & AI 聊天 SSE 流式响应 & 已配置 \texttt{AI\_API\_KEY}、\allowbrea
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.78\textwidth]{images/fig6-2.png}
-  \caption{题目列表页截图}
+  \caption{题目列表页面截图}
   \label{fig:ch6-problemlist}
 \end{figure}
 
@@ -301,7 +301,7 @@ I-06 & 语言服务（LSP）体验 & 通过 & 工具栏可观察连接状态；�
 
 第一层是\textbf{主链路冒烟}，目标是证明系统可被真实用户按正常路径驱动完成一次完整练习闭环：注册/登录、进入题单、打开题目、加载模板、提交、查看状态与记录、阅读 AI 反馈。该层对应 F-01--F-08 以及关键截图证据，强调“能跑通”而非“极限性能”。
 
-第二层是\textbf{状态与分支覆盖}，目标是把判题状态机中的主要终态与常见失败路径各至少触发一次，并核对数据库中的 \texttt{Submission.status}、\texttt{Submission.message} 与页面展示是否一致。该层对应第6章判题正确性相关用例与附录样例代码，其作用是验证系统能够区分编译、运行与答案层面的失败类型。
+第二层是\textbf{状态与分支覆盖}，目标是把判题状态机中的主要终态与常见失败路径各至少触发一次，并核对数据库中的 \texttt{Submission.status}、\texttt{Submission.message} 与页面展示是否一致。该层对应第六章判题正确性相关用例与附录样例代码，其作用是验证系统能够区分编译、运行与答案层面的失败类型。
 
 第三层是\textbf{工程可复现性}，目标是把环境版本、构建命令与关键依赖写清楚，使复核人员能够在相近环境下复现主要结论。该层对应本章测试环境表以及项目脚本中的 \texttt{lint}/\texttt{build} 校验描述，说明文中界面与行为来自可构建代码版本。
 
