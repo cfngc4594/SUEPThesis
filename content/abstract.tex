@@ -1,11 +1,19 @@
 \begin{abstract}
 
-针对传统在线编程评测平台在反馈解释能力不足、运行环境隔离性有限、并发场景下扩展能力不强等问题，本文围绕高校程序设计课程教学需求，设计并实现了一个基于云原生与 AI 辅助的一体化在线编程评测平台。平台以自动判题为核心，构建了题库管理、题目内容展示、模板代码加载、代码在线提交、容器化编译运行、测试用例判定、提交记录展示和 AI 辅助分析等功能模块，形成了较完整的业务闭环。系统采用服务化和容器化设计思路，在受控 Docker 环境中完成程序编译与执行，并结合资源限制、网络禁用和状态流转机制，提高评测过程的一致性、安全性与可维护性；在智能辅助方面，平台在客观判题完成后异步调用大语言模型，对提交代码进行时间复杂度、空间复杂度、风格、可读性、效率和正确性等多维度分析，生成结构化评价结果和改进建议。通过项目实现、构建验证和阶段性测试分析可以看出，本文方案能够较好满足程序设计练习、实验训练和课程作业等场景下的评测需求，在客观评测与学习支持相结合方面具有一定工程实践价值和应用推广意义。
+传统在线编程评测平台通常能够完成自动判题，但在教学场景下仍存在一些明显不足，例如反馈信息过于简单、执行环境隔离不够清晰，以及在集中提交场景下扩展性有限。针对这些问题，本文结合高校程序设计课程的实际需求，设计并实现了一个基于云原生与 AI 辅助的一体化在线编程评测平台。
+
+本文工作的重点不是单纯实现“提交后给出结果”的基础闭环，而是在保证客观判题稳定性的前提下，进一步增强平台的工程可用性与学习支持能力。系统以自动判题为主线，完成了题库管理、题目展示、模板代码加载、在线提交、容器化编译运行、测试用例判定、提交记录展示和 AI 辅助分析等核心功能。判题部分采用受控 Docker 环境执行用户代码，并结合资源限制、网络禁用和状态流转机制，保证运行环境的一致性与安全性。AI 模块则放在客观判题之后异步运行，用于结合提交代码和判题结果，对时间复杂度、空间复杂度、代码风格、可读性和效率等内容进行分析，生成结构化反馈与改进建议。
+
+结合系统实现、构建验证和典型测试结果可以看出，本文所实现的平台已经能够较完整地覆盖程序设计练习、实验训练和课程作业中的主要评测流程，同时在传统自动判题基础上补充了一定的解释性反馈能力。对于本科毕业设计而言，该方案较好体现了容器化判题、工程化组织和 AI 学习辅助的综合应用价值。
 
 \end{abstract}
 
 \begin{abstractEn}
 
-To address the limitations of traditional online programming evaluation platforms, including weak explanatory feedback, insufficient execution isolation, and limited scalability under teaching workloads, this paper designs and implements an integrated online programming evaluation platform based on cloud-native concepts and AI-assisted feedback for university programming education. Centered on automatic judging, the platform integrates problem management, problem presentation, template loading, online code submission, containerized compilation and execution, testcase-based judging, submission history display, and AI-assisted code analysis into a complete workflow. The system adopts service-oriented and containerized design ideas: user programs are compiled and executed in controlled Docker environments, while resource limits, network isolation, and explicit status transitions improve judging consistency, security, and maintainability. After objective judging is completed, a large language model is asynchronously invoked to analyze time complexity, space complexity, code style, readability, efficiency, and correctness, and to generate structured feedback and improvement suggestions. Implementation results, build verification, and phased testing analysis show that the platform can support programming exercises, laboratory training, and course assignments in higher education, and demonstrates practical value in combining objective evaluation with learning support.
+Traditional online programming evaluation platforms can complete automatic judging, but they often provide limited feedback, weak execution isolation, and insufficient scalability under concentrated submission workloads. To address these issues in university programming education, this paper designs and implements an integrated online programming evaluation platform based on cloud-native ideas and AI-assisted feedback.
+
+The work of this paper is not limited to building a basic submission-and-judging pipeline. Instead, it focuses on improving both engineering reliability and learning support while keeping objective judging as the core of the system. The platform includes problem management, problem presentation, template loading, online submission, containerized compilation and execution, testcase-based judging, submission history display, and AI-assisted analysis. User programs are compiled and executed in controlled Docker environments with resource limits, network isolation, and explicit status transitions, so that the judging process remains consistent and secure. The AI module runs asynchronously after objective judging and analyzes time complexity, space complexity, code style, readability, and efficiency to produce structured feedback and improvement suggestions.
+
+Implementation results, build verification, and representative test cases show that the platform can support the main workflows of programming exercises, laboratory training, and course assignments. For an undergraduate graduation project, the system demonstrates the practical value of combining containerized judging, engineering-oriented platform design, and AI-assisted learning support in a unified solution.
 
 \end{abstractEn}
