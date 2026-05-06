@@ -986,7 +986,7 @@
 
   \cleardoublepage
 
-  \setstretch{1.74}
+  \setstretch{1.5}
 
   % \begin{center}
   %   \vspace*{-17bp}
