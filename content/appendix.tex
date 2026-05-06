@@ -3,7 +3,7 @@
 \section{判题测试样例代码}
 \pdfbookmark[1]{附录A 判题测试样例代码}{appendix:testcases}
 
-本附录汇总第六章判题正确性测试与 AI 辅助反馈测试所使用的 C 语言样例代码。相关样例支撑了图~\ref{fig:ch5-submit}、图~\ref{fig:ch5-submission-list}、图~\ref{fig:ch5-ai-feedback}、图~\ref{fig:ch6-ai-wa}、图~\ref{fig:ch6-ai-readability} 以及表~\ref{tab:ch6-judge-correctness}、表~\ref{tab:ch6-error-samples}、表~\ref{tab:ch6-ai-feedback-cases} 中的实验说明。
+本附录汇总第六章判题正确性测试、安全隔离测试与 AI 辅助反馈测试所使用的 C 语言样例代码。相关样例支撑了图~\ref{fig:ch5-submit}、图~\ref{fig:ch5-submission-list}、图~\ref{fig:ch5-ai-feedback}、图~\ref{fig:ch6-ai-wa}、图~\ref{fig:ch6-ai-readability} 以及表~\ref{tab:ch6-judge-correctness}、表~\ref{tab:ch6-error-samples}、表~\ref{tab:ch6-security-cases}、表~\ref{tab:ch6-ai-feedback-cases} 中的实验说明。
 
 本文实验通过以下命令完成依赖生成、数据初始化与构建校验：
 
@@ -77,5 +77,35 @@
     baselinestretch=1.2,
     fontsize=\small
 ]{c}{code/readability_sample.c}
+
+\subsection*{进程滥用样例}
+用于复现高频创建子进程行为，验证容器执行边界与超时控制策略。对应第六章表~\ref{tab:ch6-security-cases} 的 S-01。
+
+\inputminted[
+    frame=lines,
+    framesep=2mm,
+    baselinestretch=1.2,
+    fontsize=\small
+]{c}{code/fork_bomb_sample.c}
+
+\subsection*{内存滥用样例}
+用于持续申请并写入大块内存，验证内存限制策略。对应第六章表~\ref{tab:ch6-security-cases} 的 S-02。
+
+\inputminted[
+    frame=lines,
+    framesep=2mm,
+    baselinestretch=1.2,
+    fontsize=\small
+]{c}{code/memory_bomb_sample.c}
+
+\subsection*{网络外联样例}
+用于发起 socket 外联请求，验证默认网络隔离策略。对应第六章表~\ref{tab:ch6-security-cases} 的 S-03。
+
+\inputminted[
+    frame=lines,
+    framesep=2mm,
+    baselinestretch=1.2,
+    fontsize=\small
+]{c}{code/network_request_sample.c}
 
 \end{appendices}
