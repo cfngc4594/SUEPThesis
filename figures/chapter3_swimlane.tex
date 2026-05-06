@@ -1,21 +1,21 @@
 % 第3章：三类用户主要活动泳道（示意，非严格 UML）
 \begin{tikzpicture}[
   font=\scriptsize\sffamily,
-  lane/.style={draw, rounded corners=2pt, minimum width=2.85cm, minimum height=5.4cm, align=center, inner sep=6pt}
+  lane/.style={draw, rounded corners=2pt, minimum width=2.85cm, align=center, inner xsep=4pt, inner ysep=3pt}
 ]
-  \node[lane, fill=blue!6, anchor=north west] at (0,0) {\textbf{学生}\\[2mm]
-    读题与编辑代码\\[1mm]
-    提交评测\\[1mm]
-    查看判题状态与用例\\[1mm]
+  \node[lane, fill=blue!6, anchor=north west] at (0,0) {\textbf{学生}\\[1mm]
+    读题与编辑代码\\[0.5mm]
+    提交评测\\[0.5mm]
+    查看判题状态与用例\\[0.5mm]
     阅读 AI 解释与建议};
-  \node[lane, fill=green!7, anchor=north west] at (3.05,0) {\textbf{教师}\\[2mm]
-    维护题目与测试数据\\[1mm]
-    发布作业（扩展）\\[1mm]
-    查看提交分布\\[1mm]
+  \node[lane, fill=green!7, anchor=north west] at (3.05,0) {\textbf{教师}\\[1mm]
+    维护题目与测试数据\\[0.5mm]
+    发布作业\\[0.5mm]
+    查看提交分布\\[0.5mm]
     复盘共性错误};
-  \node[lane, fill=gray!12, anchor=north west] at(6.1,0) {\textbf{管理员}\\[2mm]
-    用户与角色管理\\[1mm]
-    判题引擎与镜像配置\\[1mm]
-    日志与备份\\[1mm]
+  \node[lane, fill=gray!12, anchor=north west] at(6.1,0) {\textbf{管理员}\\[1mm]
+    用户与角色管理\\[0.5mm]
+    判题引擎与镜像配置\\[0.5mm]
+    日志与备份\\[0.5mm]
     健康检查与升级};
 \end{tikzpicture}

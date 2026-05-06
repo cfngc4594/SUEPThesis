@@ -1,6 +1,6 @@
 \chapter{在线编程评测平台核心实现}
 
-结合当前项目实现情况，平台采用全栈 Web 应用方式组织前后端能力：前端负责题目展示、代码编辑、提交记录查看与 AI 反馈交互，后端负责题目读取、提交入库、判题调度、容器调用和分析结果持久化。虽然项目部署为统一工程，但在代码职责上已经形成了相对清晰的模块划分。本章重点说明与论文主题最直接相关的核心实现，即题目读取、代码提交、容器化判题、AI 辅助分析以及前端工作区；对于教师管理、学生管理和复杂统计面板等配套页面，虽然工程中也有一定实现，但本文不将其作为主成果展开。
+结合项目实现情况，平台采用全栈 Web 应用方式组织前后端能力：前端负责题目展示、代码编辑、提交记录查看与 AI 反馈交互，后端负责题目读取、提交入库、判题调度、容器调用和分析结果持久化。虽然项目部署为统一工程，但在代码职责上已经形成了相对清晰的模块划分。本章重点说明与论文主题最直接相关的核心实现，即题目读取、代码提交、容器化判题、AI 辅助分析以及前端工作区；教师管理、学生管理和统计分析相关页面虽已实现，这里仅在与主链路密切相关处进行说明。
 
 \section{整体实现结构}
 
@@ -62,7 +62,7 @@ AI 分析模块 & \texttt{analyze-code.ts} & 在判题主链路外异步创建 C
 
 \begin{figure}[!htbp]
   \centering
-  \includegraphics[width=0.78\linewidth]{images/fig5-12.png}
+  \includegraphics[width=0.78\linewidth]{images/fig5-1.png}
   \caption{自定义登录页截图}
   \label{fig:ch5-signin}
 \end{figure}
@@ -79,7 +79,7 @@ Auth.js 配置中，\texttt{callbacks.jwt} 在检测到 \texttt{account.provider
 
 \begin{figure}[!htbp]
   \centering
-  \includegraphics[width=0.78\linewidth]{images/fig5-13.png}
+  \includegraphics[width=0.78\linewidth]{images/fig5-2.png}
   \caption{GitHub OAuth 授权确认页截图}
   \label{fig:ch5-oauth}
 \end{figure}
@@ -243,11 +243,11 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
 
 系统同时支持按语言维度为题目保存模板代码，使学生进入题目页后可以直接获得对应语言的初始代码。测试数据则通过 Testcase 与 TestcaseInput 共同组织，其中 TestcaseInput 保存有序输入项，便于在运行阶段按顺序组合为标准输入流。
 
-在题目内容组织方式上，系统将标题、题面描述和题解说明分别以 ProblemLocalization 的不同 type 存储，并配合 locale 字段支持中英文等多语言内容读取。当前实现中，题目读取动作会统一查询题目基本信息、模板代码、测试用例及其输入项、本地化内容等数据，并将题面描述序列化为可直接渲染的内容对象返回前端。
+在题目内容组织方式上，系统将标题、题面描述和题解说明分别以 ProblemLocalization 的不同 type 存储，并配合 locale 字段支持中英文等多语言内容读取。题目读取时会统一查询题目基本信息、模板代码、测试用例及其输入项、本地化内容等数据，并将题面描述序列化为可直接渲染的内容对象返回前端。
 
 题目读取模块并不是把数据库内容直接透传给前端，而是先在服务端完成一次聚合和整理。系统会在单次查询中同时带出模板代码、测试用例及其输入项，以及符合当前语言环境的本地化文本；随后再提取标题、题面描述和题解字段，并将题面描述序列化为 MDX 数据结构。这样处理后，前端拿到的数据已经更接近可直接渲染的形态，页面层不需要过多了解底层表结构。
 
-当前实现对本地化内容采用了比较直接的读取策略，即按当前 locale 查询匹配内容，不在读取层额外引入复杂回退规则。这样处理的好处在于实现简单、行为清楚，适合当前原型阶段；如果后续需要面向更正式的多语言教学场景，还可以在服务端补充当前语言缺失时回退到默认语言的策略。
+本文对本地化内容采用了较直接的读取策略，即按当前 locale 查询匹配内容，不在读取层额外引入复杂回退规则。这样处理实现简单、行为清楚，适合原型阶段；若面向更正式的多语言教学场景，可在服务端补充当前语言缺失时回退到默认语言的策略。
 
 \section{在线提交与容器化判题}
 
@@ -273,9 +273,9 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
 
 \subsection{编译流程实现}
 
-编译阶段会先把 Submission 状态更新为编译中，再根据语言类型生成对应命令。当前实现中，C 语言通过 gcc -O2 编译为 main，C++ 通过 g++ -O2 编译为 main。为避免编译日志无限增长，系统对编译输出设置了长度限制；若编译失败，则将错误信息写回 Submission.message，并把状态更新为 Compilation Error。
+编译阶段会先把 Submission 状态更新为编译中，再根据语言类型生成对应命令。本文实现中，C 语言通过 gcc -O2 编译为 main，C++ 通过 g++ -O2 编译为 main。为避免编译日志无限增长，系统对编译输出设置了长度限制；若编译失败，则将错误信息写回 Submission.message，并把状态更新为 Compilation Error。
 
-编译输出长度限制是一个容易被忽略但实际很有必要的细节。若对编译器标准错误流完全不做限制，极端情况下可能产生非常长的错误日志，不仅增加数据库写入压力，也会影响页面展示和网络传输效率。当前实现通过受限写入流截断编译输出，只保留限定长度内的错误信息。对于教学场景而言，这样的处理通常不会影响学生定位常见语法错误。
+编译输出长度限制是一个容易被忽略但实际很有必要的细节。若对编译器标准错误流完全不做限制，极端情况下可能产生非常长的错误日志，不仅增加数据库写入压力，也会影响页面展示和网络传输效率。本文通过受限写入流截断编译输出，只保留限定长度内的错误信息。对于教学场景而言，这样的处理通常不会影响学生定位常见语法错误。
 
 \subsection{运行与用例判定实现}
 
@@ -295,13 +295,13 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
 
 这种执行方式虽然仍属于单机原型阶段的轻量容器化判题，但已经体现出统一镜像环境、按任务动态创建执行单元、资源限制和最小权限运行等关键思路。对于毕设原型而言，这样的实现复杂度和可展示性之间取得了较好的平衡。
 
-除运行时约束外，容器生命周期管理同样属于安全隔离的一部分。当前实现会在判题动作结束后无论成功还是失败都进入清理流程，尝试停止并删除对应容器，避免临时执行环境在宿主机上持续堆积。对在线编程评测平台而言，这种单次提交对应单次执行环境、执行后立即回收的策略虽然会带来一定容器启动开销，但能够换取更清晰的故障边界和更低的残留风险，尤其适合本科毕设原型阶段对稳定性与可说明性的要求。
+除运行时约束外，容器生命周期管理同样属于安全隔离的一部分。系统在判题动作结束后无论成功还是失败都进入清理流程，尝试停止并删除对应容器，避免临时执行环境在宿主机上持续堆积。对在线编程评测平台而言，这种单次提交对应单次执行环境、执行后立即回收的策略虽然会带来一定容器启动开销，但能够换取更清晰的故障边界和更低的残留风险，尤其适合本科毕设原型阶段对稳定性与可说明性的要求。
 
 \subsection{判题异常路径、错误回写与可观测性}
 
 除编译失败、答案错误以及运行超时等学生侧常见结果外，工程实现还必须覆盖一类\textbf{系统侧异常}：例如 Docker 守护进程不可用、镜像缺失、题目或测试数据配置不完整、远程 Docker 连接失败等。此类问题若不在状态模型中单独区分，容易被误展示为普通 \texttt{CE}/\texttt{WA}，从而误导学生把环境问题当作算法问题反复修改。
 
-当前实现将部分系统级失败映射为 \texttt{SE}（System Error）状态，并在 \texttt{Submission.message} 中写入可读的错误摘要，同时仍尽量保留已创建的提交记录，使前端能够展示一种失败但仍可追踪的状态。这与第四章状态流转设计相呼应：受理记录一旦生成，就应成为后续排错与复盘的锚点。与此同时，编译与运行阶段的输出在落库前进行长度截断，以避免极端日志撑爆数据库字段或拖慢页面渲染；在教学解释上，这一策略应被理解为保留足够定位信息、而非无损保存完整 stderr。
+本文将部分系统级失败映射为 \texttt{SE}（System Error）状态，并在 \texttt{Submission.message} 中写入可读的错误摘要，同时仍尽量保留已创建的提交记录，使前端能够展示一种失败但仍可追踪的状态。这与第四章状态流转设计相呼应：受理记录一旦生成，就应成为后续排错与复盘的锚点。与此同时，编译与运行阶段的输出在落库前进行长度截断，以避免极端日志撑爆数据库字段或拖慢页面渲染；在教学解释上，这一策略应被理解为保留足够定位信息、而非无损保存完整 stderr。
 
 从可观测性角度看，判题链路至少应能在日志中关联用户、题目、提交 id 与容器 id（若有）这一最小追踪链。原型阶段即使未接入分布式追踪系统，也应在关键异常分支打印结构化日志字段，便于在课程集中提交时快速判断瓶颈究竟出在队列与 worker 能力不足，还是出在单机 Docker 资源耗尽。后续若引入异步 worker，还可把同一提交 id 作为跨服务日志关联键，向第四章所述编排演进路径靠拢\cite{kubernetesdocs}。
 
@@ -463,7 +463,25 @@ AI 子系统的失败兜底策略可归纳为三层。第一层是\textbf{对判
 
 \section{一体化工作区与交互}
 
-对于后台侧的题目维护、用户管理和统计页面，工程中已经具备一定基础实现，但这些能力更多承担教学辅助或配套管理职责，并非本文研究重点。从毕设范围控制的角度出发，论文只需说明其存在和支撑作用，而不应在此部分投入过多篇幅。
+\subsection{课程与作业组织实现}
+
+除评测主链路外，系统已实现面向教学组织的课程与作业基础功能。数据层包含课程、选课关系、作业及作业题目关联等核心结构，提交记录可关联作业上下文；业务层支持教师创建课程、维护学生名单、创建并发布作业、查看作业统计，学生可按课程视角进入作业并完成提交。该部分在系统中已形成可用闭环，本文在此给出概要说明，详细交互流程与页面细节不再逐页展开。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{images/fig5-8.png}
+  \caption{教师端课程页面中的学生管理与作业创建}
+  \label{fig:ch5-course-page}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{images/fig5-9.png}
+  \caption{教师端作业页面中的发布状态与统计概览}
+  \label{fig:ch5-assignment-page}
+\end{figure}
+
+图~\ref{fig:ch5-course-page} 与图~\ref{fig:ch5-assignment-page} 分别展示了课程页与作业页的实际运行界面，可作为课程组织、作业发布与班级统计能力已接入业务流程的页面级证据。
 
 \subsection{前端工作区组织与首页入口}
 
@@ -473,7 +491,7 @@ AI 子系统的失败兜底策略可归纳为三层。第一层是\textbf{对判
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\linewidth]{images/fig5-8.png}
+  \includegraphics[width=\linewidth]{images/fig5-10.png}
   \caption{题目求解主界面截图}
   \label{fig:problem-workspace}
 \end{figure}
@@ -482,14 +500,14 @@ AI 子系统的失败兜底策略可归纳为三层。第一层是\textbf{对判
   \centering
   \begin{subfigure}[t]{0.24\textwidth}
     \centering
-    \includegraphics[width=\linewidth]{images/fig5-10.png}
+    \includegraphics[width=\linewidth]{images/fig5-11.png}
     \caption{移动端首页}
     \label{fig:home-mobile}
   \end{subfigure}
   \hfill
   \begin{subfigure}[t]{0.72\textwidth}
     \centering
-    \includegraphics[width=\linewidth]{images/fig5-11.png}
+    \includegraphics[width=\linewidth]{images/fig5-12.png}
     \caption{桌面端功能导览区域}
     \label{fig:home-guide}
   \end{subfigure}
@@ -623,23 +641,23 @@ Diff 对比视图 & 当 \texttt{optimizedCode} 非空时启用，在普通与 Di
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\linewidth]{images/fig5-9.png}
+  \includegraphics[width=\linewidth]{images/fig5-13.png}
   \caption{系统本地运行与开发环境截图}
   \label{fig:local-dev-env}
 \end{figure}
 
-本轮已完成本地端到端构建验证：\texttt{docker compose -f compose.local.yml up -d postgres} 启动后数据库容器进入 \texttt{healthy} 状态；\texttt{bun install} 完成依赖安装并触发 Prisma Client 生成；\texttt{bunx prisma migrate deploy} 应用全部 10 个数据库迁移；\texttt{bunx prisma db seed} 完成种子数据初始化；\texttt{bun run build} 生产构建通过，构建输出中可见 \path{/problemset}、\path{/problems/[problemId]}、\path{/dashboard} 以及后台管理相关核心路由均已成功参与构建。图~\ref{fig:local-dev-env} 给出了运行界面与开发终端状态，可作为本地演示环境正常工作的直接证据。
+本地端到端构建验证结果如下：\texttt{docker compose -f compose.local.yml up -d postgres} 启动后数据库容器进入 \texttt{healthy} 状态；\texttt{bun install} 完成依赖安装并触发 Prisma Client 生成；\texttt{bunx prisma migrate deploy} 应用全部 10 个数据库迁移；\texttt{bunx prisma db seed} 完成种子数据初始化；\texttt{bun run build} 生产构建通过，构建输出中可见 \path{/problemset}、\path{/problems/[problemId]}、\path{/dashboard} 以及后台管理相关核心路由均已参与构建。图~\ref{fig:local-dev-env} 给出了运行界面与开发终端状态，可作为本地演示环境正常工作的证据。
 
-\section{实现现状与后续演进说明}
+\section{实现边界与后续说明}
 
-本节区分当前仓库已落地行为与第四章设计中的演进项，便于读者理解平台在原型阶段已经稳定实现的能力，以及哪些方向已为后续工作预留接口、但当前并未以独立服务或消息队列形式出现。
+本节用于说明第五章实现结果与第四章设计目标之间的对应关系，明确已经完成的部分与尚待补充的部分，避免将设计项与已实现功能混写。
 
-判题入口 \texttt{judge}（\path{src/app/actions/judge.ts}）在一次 Server Action 调用内依次完成环境准备、\texttt{compile}、\texttt{run} 与结果写回，并在末尾调用 \texttt{revalidatePath} 使前端获得更新。这与第四章所述提交入队、后台 worker 与 WebSocket 推送判题进度的异步路线相比，属于\textbf{请求内同步判题}实现：实现链路较短、调试路径清晰，但在高峰负载下判题耗时仍占用 Web 进程时间片。Prisma 枚举 \texttt{Status} 中已包含 \texttt{PD}、\texttt{QD} 等可表达排队语义的取值，数据层为后续接入队列预留了字段空间，但主线流程当前并未启动独立队列消费者。
+判题入口 \texttt{judge}（\path{src/app/actions/judge.ts}）在一次 Server Action 调用内依次完成环境准备、\texttt{compile}、\texttt{run} 与结果写回，并在末尾调用 \texttt{revalidatePath} 使前端获得更新。相较于第四章中提交入队、后台 worker 与 WebSocket 推送判题进度的异步路线，这一实现属于\textbf{请求内同步判题}：链路较短、调试路径清晰，但在高峰负载下判题耗时仍占用 Web 进程时间片。Prisma 枚举 \texttt{Status} 中已包含 \texttt{PD}、\texttt{QD} 等可表达排队语义的取值，数据层已保留队列化所需状态，但主流程尚未启动独立队列消费者。
 
 与主判题不同，\texttt{CodeAnalysis} 使用独立状态枚举（如 \texttt{QUEUED}、\texttt{PROCESSING} 等），由 \texttt{analyzeCode} 在客观判题完成后异步触发，体现主结果确定、解释层后置的拆分方式。仓库中的 WebSocket 现用于语言服务（LSP），而非判题状态推送；若未来按第四章设计接入判题事件通道，应避免与 LSP 长连接混在同一套路由语义中。
 
-第四章给出了课程、作业及课程级运行环境配置的实体建议，但当前 \texttt{schema.prisma} 尚未出现 \texttt{Course}/\texttt{Assignment} 等表，相关能力属于设计预留。ACM/ICPC、OI 等判题模式及额外中间实体（如按场次拆表的 Judge/JudgeRun）亦未在本仓库实现；若后续需要，应在数据模型与判题调度层单独立项扩展，而不宜在本文中将其写成已具备。现有题库、\texttt{Submission}、\texttt{TestcaseResult} 与 \texttt{CodeAnalysis} 已形成可运行的数据闭环，可作为课程化扩展时挂载作业与成绩归因的基础；Docker 与远程 Docker 配置则支撑执行环境与 Web 服务在部署上分层这一思路的延续演进。
+在课程化能力方面，本文已完成课程、选课关系、作业及作业题目关联等核心数据结构，并将作业上下文与提交记录建立关联。基于这一结构，教师端可进行课程维护、学生管理、作业创建与发布及统计查看，学生端也可在课程语境下进入作业并完成提交。尚待进一步完善的部分主要包括：基于独立 worker 与队列的异步判题、课程级运行环境继承配置，以及 ACM/ICPC、OI 等多判题模式与更细粒度的判题过程建模。总体而言，现有题库、提交、用例结果与 AI 分析已经形成可运行的数据闭环，并为后续扩展保留了接口。
 
 \section{本章小结}
 
-本章围绕平台核心模块的实际落地情况，说明了数据模型、题库组织、在线提交、容器化判题、AI 辅助分析、前端工作区、身份认证与 LSP 等关键实现内容。结果表明，当前系统已可在单机环境完成从登录、做题、提交到结果反馈的完整流程；异步判题、课程化组织与课程级运行配置等能力仍处于后续演进阶段。
+本章围绕平台核心模块的实现结果，说明了数据模型、题库组织、在线提交、容器化判题、AI 辅助分析、前端工作区、身份认证与 LSP 等关键内容。结果表明，系统已可在单机环境完成从登录、做题、提交到结果反馈的完整流程，课程与作业组织能力也已形成基本闭环；异步判题 worker 化、课程级运行配置与更丰富判题模式等能力仍待后续完善。
