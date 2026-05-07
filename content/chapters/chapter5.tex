@@ -15,7 +15,7 @@
 
 在数据库访问层面，系统通过 Prisma 管理数据模型和查询逻辑，并在项目初始化或模式调整后通过生成客户端保持类型安全。题目、提交、测试结果和分析结果均通过统一的数据访问层进行读写，这使得前端页面、判题流程和 AI 模块之间能够围绕统一模型协同工作。
 
-在运行环境支持上，系统通过配置项区分本地 Docker 模式和远程 Docker 模式。当在本地模式下运行时，平台会借助宿主机 Docker 套接字来管理容器，而在远程模式下运行时，会依据协议、地址、端口、证书来建立远程 Docker 连接。如此设计，使得判题执行环境能够同 Web 服务实现解耦，同时也支持将判题节点部署到独立服务器或者容器集群。
+在运行环境层，系统通过配置切分本地与远程两类 Docker 执行路径。本地路径直接使用宿主机套接字管理容器；远程路径则依据协议、地址、端口和证书参数建立连接。该设计让判题执行位置可独立于 Web 服务部署，便于后续将 worker 迁移到专用节点或集群环境。
 
 从工程生态角度看，本文实现所依赖的关键第三方组件均具有公开可查的文档或源码：容器与镜像语义可参考 Docker 与 OCI 规范\cite{dockerdocs,opencontainers}；编排与云侧扩展路径可参考 Kubernetes 文档与云原生参考材料\cite{kubernetesdocs,huawei2020cloudnativedoc}；关系型数据持久化遵循 PostgreSQL 官方手册所描述的事务与 SQL 语义\cite{postgresqlmanual}；对象关系映射与迁移工具链遵循 Prisma 官方文档\cite{prismadocs}；前端工程栈与路由构建可参考 Next.js 文档\cite{nextjsdocs}。在判题执行服务化方面，Judge0 与 DOMjudge 等开源社区实现提供了可对照的 API 形态、沙箱边界与运维经验\cite{judge0online,domjudgeonline}，有助于解释本文为何采用 Web 服务与独立判题执行环境分离的解耦思路，而不是把所有判题逻辑耦合在 Web 进程内。
 
@@ -119,7 +119,7 @@ Auth.js 配置中，\texttt{callbacks.jwt} 在检测到 \texttt{account.provider
 
 \subsection{题目内容与模板数据设计}
 
-题目实体 Problem 负责描述 displayId、难度、是否发布、时间限制、内存限制等基础属性。其中 displayId 用于面向用户的题号展示，timeLimit 与 memoryLimit 则直接影响判题执行阶段的资源约束。ProblemLocalization 通过 problemId、locale 和 type 组合唯一确定一条本地化内容，用于分别存储题目标题、题面描述和题解内容；Template 则通过 problemId 与 language 的组合存储不同语言的模板代码。
+题目实体 Problem 负责承载 displayId、难度、发布状态、时限与内存限制等基础属性。其中 displayId 面向用户展示题号，timeLimit 与 memoryLimit 直接参与判题资源约束。ProblemLocalization 通过 problemId、locale、type 的组合唯一定位一条本地化文本，用于存放标题、题面与题解；模板代码由 Template 按 problemId 与 language 组合管理，以支持多语言初始代码加载。
 
 从数据一致性角度看，当前模式设计并不是把所有文本和代码都堆在同一张表中，而是通过复合主键和唯一约束保证多语言内容与模板代码的组织稳定性。例如，同一道题目在同一种语言下只能存在一份模板代码，同一道题目在同一种语言和同一种内容类型下也只能存在一份本地化文本。这种设计既减少了重复数据，也让前端读取题目详情时更容易获得确定结果。
 
@@ -145,12 +145,12 @@ Auth.js 配置中，\texttt{callbacks.jwt} 在检测到 \texttt{account.provider
 \endhead
 \bottomrule
 \endfoot
-User & id, email, password, role, image & 存储用户基本信息与角色标识，为登录认证、权限区分和提交归属提供基础支持。 \\
+User & id, email, password, role, image & 记录账号与角色等核心信息，用于认证鉴权、权限判断及提交归属追踪。 \\
 Problem & id, displayId, difficulty, isPublished, timeLimit, memoryLimit, isTrim & 描述题目的基础约束与评测配置，是题库管理和判题流程的核心实体。 \\
 Problem\allowbreak Localization & problemId, locale, type, content & 按语言和内容类型存储题目标题、题面描述与题解等文本信息，支持多语言展示。 \\
 Template & problemId, language, content & 保存不同编程语言对应的模板代码，供用户进入题目页后直接加载。 \\
 Submission & id, language, content, status, message, timeUsage, memoryUsage, userId, problemId & 记录用户每次代码提交及其判题状态、错误信息和资源消耗，是评测主链路的核心业务表。 \\
-Judge & id, submissionId, status, startTime, endTime, compileOutput & 保存一次提交在判题阶段的主状态与编译输出等轨迹信息，便于提交级追踪。 \\
+Judge & id, submissionId, status, startTime, endTime, compileOutput & 记录单次提交在判题阶段的关键轨迹（含编译输出），用于提交级过程追溯。 \\
 JudgeRun & id, judgeId, testcaseId, status, timeUsage, memoryUsage, stdin, stdout, stderr & 保存逐用例执行结果与输入输出信息，支撑失败定位与详情展示。 \\
 Testcase & id, expectedOutput, problemId & 保存标准测试用例及其期望输出，为程序运行结果判定提供依据。 \\
 Testcase\allowbreak Input & id, testcaseId, index, name, value & 保存测试用例的有序输入项，便于运行阶段按顺序组装标准输入流。 \\
@@ -178,7 +178,7 @@ Code\allowbreak Analysis & id, submissionId, status, timeComplexity, spaceComple
 \bottomrule
 \endfoot
 PD & Pending & 提交记录已创建，处于判题流程起点，尚未进入编译阶段。 \\
-QD & Queued & 提交已受理并完成落库，等待 Inngest 事件函数取出后进入编译与运行阶段。 \\
+QD & Queued & 提交请求已被接收并持久化，后续由事件函数异步拉取进入编译与运行流程。 \\
 CP & Compiling & 代码已进入编译阶段，系统正在调用对应语言编译器进行构建。 \\
 CE & Compilation Error & 编译失败，系统会将编译器错误输出写回 Submission.message 供前端展示。 \\
 CS & Compilation Success & 编译成功的中间状态，通常会很快继续流转到运行阶段。 \\
@@ -186,7 +186,7 @@ RU & Running & 程序正在受控容器环境中执行测试用例。 \\
 AC & Accepted & 所有测试用例均通过，提交被判定为正确结果。 \\
 WA & Wrong Answer & 程序可正常运行，但输出结果与标准答案不一致。 \\
 RE & Runtime Error & 程序在运行阶段异常退出或发生非法操作。 \\
-TLE & Time Limit Exceeded & 程序在规定时间限制内未完成执行，通常由死循环或低效逻辑触发。 \\
+TLE & Time Limit Exceeded & 程序未在给定时限内完成，常见诱因包括死循环或时间复杂度过高。 \\
 MLE & Memory Limit Exceeded & 程序运行期间内存占用超过题目限定阈值。 \\
 SE & System Error & 系统环境、配置或流程执行出现异常，例如题目缺失、Docker 配置缺失或容器调用失败。 \\
 \bottomrule
@@ -290,11 +290,11 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
 
 与同步串行判题不同，本文将容器准备、源码上传、编译、逐用例执行和容器清理组织为 Inngest 函数内的阶段化步骤。图~\ref{fig:ch5-submission-list} 展示了该链路在运行面板中的阶段轨迹，可直接看到 \texttt{parse-event}、\texttt{load-submission}、\texttt{prepare-container}、\texttt{compile-submission}、\texttt{run-testcase} 与 \texttt{cleanup-container} 等步骤。这样既能在运行时日志中看到清晰的阶段边界，也能在异常时快速定位故障发生位置。对论文展示而言，该判题链路不是单函数黑盒，而是具备可追踪、可回放的执行轨迹。
 
-若某个测试用例触发答案错误、运行错误、时间超限或内存超限，系统会立即写入对应的 JudgeRun 记录，并终止后面的用例执行。只有当前一个用例返回正常执行状态时，才会继续处理下一个用例。这一实现符合在线评测系统常见的短路判题思路，也有助于节省执行资源。
+一旦某个测试用例触发 \texttt{WA}、\texttt{RE}、\texttt{TLE} 或 \texttt{MLE}，系统会立刻落库当前 JudgeRun 并停止后续用例执行。仅当前一用例正常通过时才继续下一例。该策略采用短路判题机制，可减少无效计算并加快失败结果回传。
 
-当所有测试用例均通过后，系统会统计该提交下各用例的时间消耗，并结合容器运行统计更新最终的时间使用量和内存使用量，再把 Submission 的状态设置为 Accepted。这样，提交记录不仅保存了最终结果，还能保留一定的性能信息，为结果展示和教学分析提供依据。
+若全部测试用例通过，系统会汇总用例耗时并结合容器统计更新最终时间与内存摘要，然后将 Submission 置为 \texttt{Accepted}。因此提交记录除了最终结论外，还保留了可用于展示与教学分析的性能信息。
 
-在具体执行方式上，系统并不是把所有输入一次性拼接后批量运行，而是按测试用例顺序逐个执行。每个测试用例对应的输入项会先按 \texttt{index} 字段排序，再拼接为标准输入流写入容器进程。这样可以更准确地记录每个用例的输出和耗时，也便于在出现 \texttt{WA}、\texttt{RE} 或 \texttt{TLE} 时快速定位首个失败用例。
+执行阶段采用逐用例串行运行，而非一次性合并输入批处理。每个用例的输入项先按 \texttt{index} 排序，再组装为标准输入写入容器进程。这样更利于精确记录单用例输出与耗时，也便于在出现 \texttt{WA}/\texttt{RE}/\texttt{TLE} 时定位首个失败点。
 
 当全部测试用例均通过时，系统会从各个 JudgeRun 里提取非空时间，并且选取其中最大值当作本次提交的时间摘要，而非仅仅取最后一个用例的耗时。这种做法更贴近在线编程评测平台常见的统计模式。内存使用量是借助容器统计信息提取峰值，从而为页面展示和性能分析提供摘要依据。
 
@@ -555,7 +555,7 @@ AI 子系统的失败兜底策略可归纳为三层。\textbf{对判题主链路
 题目语言选择 & 全局语言键与题目级语言键 & 支持用户在不同题目之间延续语言偏好，同时允许某道题保留独立语言选择。 \\
 题目代码草稿 & \texttt{<problemId>}\allowbreak\texttt{\_<language>} 形式的本地键值 & 在未正式提交前保存当前代码内容，减少误刷新或切换页面导致的草稿丢失。 \\
 编辑器路径标识 & \path{file:///<problemId>/main.<language>} & 为编辑器和语言服务提供稳定文件标识，便于语法高亮、诊断和语言切换。 \\
-优化代码对比态 & 内存状态与差异视图开关 & 当 AI 或其他功能生成改进代码时，可在原始代码与优化版本之间进行差异比较。 \\
+优化代码对比态 & 内存状态与差异视图开关 & 生成优化版本后可切换 Diff 视图，对照原代码与建议改动。 \\
 \bottomrule
 \end{longtable}
 \endgroup
@@ -607,7 +607,7 @@ AI 子系统的失败兜底策略可归纳为三层。\textbf{对判题主链路
 \endfoot
 语言切换与模板加载 & 在工具栏切换语言并同步读取对应模板代码 & 方便同一道题在 C、C++ 等不同语言间切换，降低重复初始化成本。 \\
 语言服务状态提示 & 工具栏 \texttt{LSP} 指示灯随 \texttt{WebSocket} 状态变化 & 提示语言服务是否已连通，避免断链时误判为代码无错误。 \\
-诊断波浪线与问题列表 & \texttt{clangd} 经 LSP 推送诊断，Monaco 映射为标记 & 将拼写/语法/类型错误定位到行列，减少仅依赖编译日志时的定位成本。 \\
+诊断波浪线与问题列表 & \texttt{clangd} 经 LSP 推送诊断，Monaco 映射为标记 & 在编辑阶段把拼写/语法/类型问题定位到具体行列，降低仅靠编译日志排错的成本。 \\
 补全与签名帮助 & LSP 标准能力，如 \texttt{completion}/\texttt{signatureHelp} 等 & 提供接近本地 IDE 的输入体验，降低模板附近 API 试错的摩擦。 \\
 复杂度分析 & 见第~\ref{sec:ch5-ai-sse}~节同步辅助小节，返回结构化时间/空间复杂度 & 帮助学生在提交前形成复杂度意识，及早发现低效实现。 \\
 代码优化建议 & 见第~\ref{sec:ch5-ai-sse}~节同步辅助小节，返回独立保存的优化版本 & 为学生提供可参考的改进版本，但不强制覆盖原代码。 \\
@@ -619,7 +619,7 @@ Diff 对比视图 & 当 \texttt{optimizedCode} 非空时启用，在普通与 Di
 
 \subsection{响应式布局与多终端适配}
 
-除桌面端常规使用场景外，当前前端实现还显式考虑了平板与移动端访问时的界面退化策略。系统通过独立的移动端检测逻辑识别当前视口宽度，并在侧边栏等高频交互区域中区分桌面端与移动端布局方式：在桌面端，工作区可维持多面板并列或可折叠侧栏的组织形式；在移动端，则优先采用抽屉式面板承载侧边内容，以避免在狭窄屏幕中出现过度拥挤的固定布局。这意味着平台虽然主要服务于桌面编程训练，但并未把小屏设备完全排除在可用范围之外。
+前端除桌面主场景外，也实现了平板与移动端的退化布局策略。系统会根据视口宽度切换交互组织：桌面端保留多面板并列与可折叠侧栏，移动端则将侧边内容收纳到抽屉面板，避免窄屏固定多栏造成拥挤。换言之，平台虽然以桌面编程训练为主，但小屏设备仍可完成核心操作链路。
 
 从具体使用方式上看，题目阅读、提交记录回顾、AI 问答和结果查看等信息密集型区域，在桌面端更适合并列呈现，以支持学生边看题、边编码、边复盘这种并行操作；而在平板或手机端，更合理的策略是让核心编辑区域保持主要可见，同时将次级面板收纳为按需展开的区域。本文采用核心内容常驻、辅助内容按需展开的方式，使同一工作区能够适配多类终端。
 
