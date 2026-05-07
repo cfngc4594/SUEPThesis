@@ -15,9 +15,9 @@
 
 在数据库访问层面，系统通过 Prisma 管理数据模型和查询逻辑，并在项目初始化或模式调整后通过生成客户端保持类型安全。题目、提交、测试结果和分析结果均通过统一的数据访问层进行读写，这使得前端页面、判题流程和 AI 模块之间能够围绕统一模型协同工作。
 
-在运行环境层，系统通过配置切分本地与远程两类 Docker 执行路径。本地路径直接使用宿主机套接字管理容器；远程路径则依据协议、地址、端口和证书参数建立连接。该设计让判题执行位置可独立于 Web 服务部署，便于后续将 worker 迁移到专用节点或集群环境。
+运行环境方面，系统会依据特定配置来区分本地与远程这两种不同类型的 Docker 执行路径。对于本地路径，会运用宿主机套接字对容器实施直接管理，而远程路径，它会按照协议、地址、端口、证书这些参数来建立连接。这样的设计使得判题执行的位置能够从 Web 服务部署中脱离，方便后续朝着专用节点或者集群环境的方向迁移 worker。
 
-从工程生态角度看，本文实现所依赖的关键第三方组件均具有公开可查的文档或源码：容器与镜像语义可参考 Docker 与 OCI 规范\cite{dockerdocs,opencontainers}；编排与云侧扩展路径可参考 Kubernetes 文档与云原生参考材料\cite{kubernetesdocs,huawei2020cloudnativedoc}；关系型数据持久化遵循 PostgreSQL 官方手册所描述的事务与 SQL 语义\cite{postgresqlmanual}；对象关系映射与迁移工具链遵循 Prisma 官方文档\cite{prismadocs}；前端工程栈与路由构建可参考 Next.js 文档\cite{nextjsdocs}。在判题执行服务化方面，Judge0 与 DOMjudge 等开源社区实现提供了可对照的 API 形态、沙箱边界与运维经验\cite{judge0online,domjudgeonline}，有助于解释本文为何采用 Web 服务与独立判题执行环境分离的解耦思路，而不是把所有判题逻辑耦合在 Web 进程内。
+从工程生态角度看，本文实现所依赖的关键第三方组件均具有公开可查的文档或源码：容器与镜像语义可参考 Docker 与 OCI 规范\cite{dockerdocs,opencontainers}；编排与云侧扩展路径可参考 Kubernetes 文档与云原生参考材料\cite{kubernetesdocs,huawei2020cloudnativedoc}；关系型数据持久化遵循 PostgreSQL 官方手册所描述的事务与 SQL 语义\cite{postgresqlmanual}；对象关系映射与迁移工具链遵循 Prisma 官方文档\cite{prismadocs}；前端工程栈与路由构建可参考 Next.js 文档\cite{nextjsdocs}。在判题执行服务化方面，Judge0 与 DOMjudge 等开源实现给出了可对照的 API 形态、沙箱边界与运维经验\cite{judge0online,domjudgeonline}。结合这些实践，本文把 Web 服务和独立判题执行环境拆开部署，而不是把全部判题逻辑塞进 Web 进程。
 
 \begingroup
 \small
@@ -119,7 +119,7 @@ Auth.js 配置中，\texttt{callbacks.jwt} 在检测到 \texttt{account.provider
 
 \subsection{题目内容与模板数据设计}
 
-题目实体 Problem 负责承载 displayId、难度、发布状态、时限与内存限制等基础属性。其中 displayId 面向用户展示题号，timeLimit 与 memoryLimit 直接参与判题资源约束。ProblemLocalization 通过 problemId、locale、type 的组合唯一定位一条本地化文本，用于存放标题、题面与题解；模板代码由 Template 按 problemId 与 language 组合管理，以支持多语言初始代码加载。
+题目实体 Problem 主要承担 displayId、难度、发布状态、时限和内存限制等基础属性。displayId 直接用于题号展示，timeLimit 和 memoryLimit 会直接参与判题阶段的资源约束。ProblemLocalization 通过 problemId、locale、type 这个组合唯一定位本地化文本，用来存放标题、题面、题解；模板代码由 Template 按 problemId 和 language 的组合管理，从而支持多语言场景下的初始代码加载。
 
 从数据一致性角度看，当前模式设计并不是把所有文本和代码都堆在同一张表中，而是通过复合主键和唯一约束保证多语言内容与模板代码的组织稳定性。例如，同一道题目在同一种语言下只能存在一份模板代码，同一道题目在同一种语言和同一种内容类型下也只能存在一份本地化文本。这种设计既减少了重复数据，也让前端读取题目详情时更容易获得确定结果。
 
@@ -145,16 +145,16 @@ Auth.js 配置中，\texttt{callbacks.jwt} 在检测到 \texttt{account.provider
 \endhead
 \bottomrule
 \endfoot
-User & id, email, password, role, image & 记录账号与角色等核心信息，用于认证鉴权、权限判断及提交归属追踪。 \\
+User & id, email, password, role, image & 这一表主要把账号和角色这些核心信息落下来，后续在认证鉴权、权限判断、提交归属追踪时都会直接用到。 \\
 Problem & id, displayId, difficulty, isPublished, timeLimit, memoryLimit, isTrim & 描述题目的基础约束与评测配置，是题库管理和判题流程的核心实体。 \\
 Problem\allowbreak Localization & problemId, locale, type, content & 按语言和内容类型存储题目标题、题面描述与题解等文本信息，支持多语言展示。 \\
 Template & problemId, language, content & 保存不同编程语言对应的模板代码，供用户进入题目页后直接加载。 \\
-Submission & id, language, content, status, message, timeUsage, memoryUsage, userId, problemId & 记录用户每次代码提交及其判题状态、错误信息和资源消耗，是评测主链路的核心业务表。 \\
-Judge & id, submissionId, status, startTime, endTime, compileOutput & 记录单次提交在判题阶段的关键轨迹（含编译输出），用于提交级过程追溯。 \\
+Submission & id, language, content, status, message, timeUsage, memoryUsage, userId, problemId & 该表按提交维度保存代码内容、判题状态、错误信息和资源消耗数据，判题主链路的多数状态流转都围绕它展开。 \\
+Judge & id, submissionId, status, startTime, endTime, compileOutput & 这里会把一次提交在判题阶段的关键轨迹记录下来，编译输出也会被完整保留，方便后面按提交粒度去回溯全过程。 \\
 JudgeRun & id, judgeId, testcaseId, status, timeUsage, memoryUsage, stdin, stdout, stderr & 保存逐用例执行结果与输入输出信息，支撑失败定位与详情展示。 \\
 Testcase & id, expectedOutput, problemId & 保存标准测试用例及其期望输出，为程序运行结果判定提供依据。 \\
-Testcase\allowbreak Input & id, testcaseId, index, name, value & 保存测试用例的有序输入项，便于运行阶段按顺序组装标准输入流。 \\
-Code\allowbreak Analysis & id, submissionId, status, timeComplexity, spaceComplexity, overallScore, feedback & 保存 AI 对提交代码的结构化分析结果，实现客观判题与 AI 辅助反馈分离存储。 \\
+Testcase\allowbreak Input & id, testcaseId, index, name, value & 该表用于保存测试用例的有序输入项，运行阶段会按这个顺序去组装标准输入流。 \\
+Code\allowbreak Analysis & id, submissionId, status, timeComplexity, spaceComplexity, overallScore, feedback & 用于保存 AI 对提交代码给出的结构化分析结果，同时与客观判题结果分开存储，避免相互干扰。 \\
 \bottomrule
 \end{longtable}
 \endgroup
@@ -178,7 +178,7 @@ Code\allowbreak Analysis & id, submissionId, status, timeComplexity, spaceComple
 \bottomrule
 \endfoot
 PD & Pending & 提交记录已创建，处于判题流程起点，尚未进入编译阶段。 \\
-QD & Queued & 提交请求已被接收并持久化，后续由事件函数异步拉取进入编译与运行流程。 \\
+QD & Queued & 表示这次提交已经被系统接收并完成持久化，后面会由事件函数异步拉取，继续进入编译和运行流程。 \\
 CP & Compiling & 代码已进入编译阶段，系统正在调用对应语言编译器进行构建。 \\
 CE & Compilation Error & 编译失败，系统会将编译器错误输出写回 Submission.message 供前端展示。 \\
 CS & Compilation Success & 编译成功的中间状态，通常会很快继续流转到运行阶段。 \\
@@ -186,7 +186,7 @@ RU & Running & 程序正在受控容器环境中执行测试用例。 \\
 AC & Accepted & 所有测试用例均通过，提交被判定为正确结果。 \\
 WA & Wrong Answer & 程序可正常运行，但输出结果与标准答案不一致。 \\
 RE & Runtime Error & 程序在运行阶段异常退出或发生非法操作。 \\
-TLE & Time Limit Exceeded & 程序未在给定时限内完成，常见诱因包括死循环或时间复杂度过高。 \\
+TLE & Time Limit Exceeded & 说明程序在给定时限内没有跑完，常见原因一般是死循环，或者时间复杂度偏高。 \\
 MLE & Memory Limit Exceeded & 程序运行期间内存占用超过题目限定阈值。 \\
 SE & System Error & 系统环境、配置或流程执行出现异常，例如题目缺失、Docker 配置缺失或容器调用失败。 \\
 \bottomrule
@@ -197,7 +197,7 @@ Submission 作为整个平台非常关键的业务实体之一，能够用来存
 
 本文将判题数据拆分为 Submission、Judge、JudgeRun 三层。这样设计的直接好处是，提交级状态与用例级细节能够解耦，便于在列表页展示摘要并在详情页展示失败用例上下文。编译输出、运行输入输出和错误输出等诊断信息也能按职责归位，减少同一字段承担多种语义。
 
-CodeAnalysis 用于保存 AI 辅助分析结果，它通过 submissionId 与 Submission 建立一对一关系，并使用独立状态字段跟踪分析任务的处理阶段。这样一来，AI 分析既可以异步运行而不阻塞主判题流程，也可以与客观判题结果保持分离存储。
+CodeAnalysis 用于保存 AI 辅助分析结果，它通过 submissionId 与 Submission 建立一对一关系，并使用独立状态字段跟踪分析任务的处理阶段。由此，AI 分析既可以异步运行而不阻塞主判题流程，也可以与客观判题结果保持分离存储。
 
 \begingroup
 \small
@@ -220,7 +220,7 @@ CodeAnalysis 用于保存 AI 辅助分析结果，它通过 submissionId 与 Sub
 ProblemLocalization & \texttt{problemId + locale + type} 复合主键 & 保证同一道题目的同一种内容类型在同一种语言下只有唯一版本，避免题面与题解文本冲突。 \\
 Template & \texttt{problemId + language} 复合主键 & 保证每道题在每种语言下只有一份模板代码，便于前端切换语言时直接加载对应初始代码。 \\
 CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应一条主分析记录，避免多次分析结果互相覆盖或重复展示。 \\
-外键级联删除 & 多个实体对 Problem、Submission 的级联关系 & 当题目或提交被删除时，相关本地化文本、模板、判题轨迹和分析记录可自动清理，减少孤儿数据。 \\
+外键级联删除 & 多个实体对 Problem、Submission 的级联关系 & 题目或提交删除后，关联的本地化文本、模板、判题轨迹和分析记录都会随之清理，可减少孤立数据残留。 \\
 提交与用例分层记录 & Submission、Judge、JudgeRun 分层设计 & 既保存提交级摘要，又保留用例级细节，为详情展示、错误复盘和统计提供更细粒度的数据基础。 \\
 \bottomrule
 \end{longtable}
@@ -272,9 +272,9 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
 
 \subsection{提交受理与状态流转}
 
-在提交入口处，系统会校验用户是否登录、题目是否存在、测试用例是否存在以及对应语言的 Docker 配置是否完整。通过这些前置检查，可以避免无效请求直接进入判题流程。校验通过后，\path{src/app/actions/judge.ts} 会创建状态为 \texttt{QD} 的 Submission 记录，并以 \texttt{name="submissions/create"} 的事件将提交 id 投递给 Inngest。这样，HTTP 请求在受理阶段即可快速返回，耗时编译与运行由异步执行链路继续推进。
+在提交入口处，系统会校验用户是否登录、题目是否存在、测试用例是否存在以及对应语言的 Docker 配置是否完整。通过这些前置检查，可以避免无效请求直接进入判题流程。校验通过后，\path{src/app/actions/judge.ts} 会创建状态为 \texttt{QD} 的 Submission 记录，并以 \texttt{name="submissions/create"} 的事件将提交 id 投递给 Inngest。HTTP 请求在受理阶段即可返回，后续编译和运行交给异步链路继续处理。
 
-将 Submission 记录放在编译和运行之前创建，具有比较明确的工程意义。这样做后，系统从用户点击提交开始就有了稳定的状态载体，前端可以立即展示记录，即使编译、运行或容器调用失败，也能把错误统一回写到同一条记录中。该实现中，这一载体还承担了异步链路中的状态锚点角色：\texttt{QD}、\texttt{CP}、\texttt{RU} 到终态由同一条记录持续流转，便于追踪与复盘。
+把 Submission 记录放在编译、运行之前先创建出来，在工程上有明确意义。用户从点击提交开始就会对应到一条稳定记录，前端也能立即展示这条记录；即使后面编译失败、运行失败或者容器调用失败，错误信息也能统一回写到同一条记录里。在异步链路里，从 \texttt{QD}、\texttt{CP}、\texttt{RU} 到最终状态都持续写回同一条记录，排查问题和事后复盘都会更直接。
 
 在状态联动上，系统同时维护提交级状态与判题轨迹状态。\texttt{Submission.status} 负责前端高频展示与筛选，\texttt{Judge.status} 和 \texttt{JudgeRun.status} 负责编译与逐用例执行细节。两者通过统一映射规则保持一致，避免页面状态与轨迹状态错位。围绕这一映射，状态广播会同步推送到 problem 频道与 submission 频道，前端监听后触发刷新，使提交列表与详情页都能在异步执行期间连续更新。
 
@@ -290,11 +290,11 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
 
 与同步串行判题不同，本文将容器准备、源码上传、编译、逐用例执行和容器清理组织为 Inngest 函数内的阶段化步骤。图~\ref{fig:ch5-submission-list} 展示了该链路在运行面板中的阶段轨迹，可直接看到 \texttt{parse-event}、\texttt{load-submission}、\texttt{prepare-container}、\texttt{compile-submission}、\texttt{run-testcase} 与 \texttt{cleanup-container} 等步骤。这样既能在运行时日志中看到清晰的阶段边界，也能在异常时快速定位故障发生位置。对论文展示而言，该判题链路不是单函数黑盒，而是具备可追踪、可回放的执行轨迹。
 
-一旦某个测试用例触发 \texttt{WA}、\texttt{RE}、\texttt{TLE} 或 \texttt{MLE}，系统会立刻落库当前 JudgeRun 并停止后续用例执行。仅当前一用例正常通过时才继续下一例。该策略采用短路判题机制，可减少无效计算并加快失败结果回传。
+只要某个测试用例触发了 \texttt{WA}、\texttt{RE}、\texttt{TLE} 或 \texttt{MLE}，系统就会立即把当前 JudgeRun 落库，并停止后续用例继续执行。只有前一个用例正常通过时，才会继续跑下一个。这种处理方式本质上属于短路判题，能够减少无效计算，也能更快把失败结果回传出来。
 
-若全部测试用例通过，系统会汇总用例耗时并结合容器统计更新最终时间与内存摘要，然后将 Submission 置为 \texttt{Accepted}。因此提交记录除了最终结论外，还保留了可用于展示与教学分析的性能信息。
+要是所有测试用例都通过了，系统会把用例耗时进行汇总，再结合容器统计来更新最终的时间、内存摘要，之后将 Submission 设置为 \texttt{Accepted}。提交记录除了有最终结论之外，还留存了能够用于展示、教学分析的性能信息。
 
-执行阶段采用逐用例串行运行，而非一次性合并输入批处理。每个用例的输入项先按 \texttt{index} 排序，再组装为标准输入写入容器进程。这样更利于精确记录单用例输出与耗时，也便于在出现 \texttt{WA}/\texttt{RE}/\texttt{TLE} 时定位首个失败点。
+执行阶段按用例顺序逐个运行，不做合并输入批处理。每个用例的输入先按 \texttt{index} 排序，再拼成标准输入送入容器。每个用例的输出和耗时都能单独记录；若出现 \texttt{WA}、\texttt{RE} 或 \texttt{TLE}，可直接定位首个失败用例。
 
 当全部测试用例均通过时，系统会从各个 JudgeRun 里提取非空时间，并且选取其中最大值当作本次提交的时间摘要，而非仅仅取最后一个用例的耗时。这种做法更贴近在线编程评测平台常见的统计模式。内存使用量是借助容器统计信息提取峰值，从而为页面展示和性能分析提供摘要依据。
 
@@ -360,7 +360,7 @@ AI 辅助子系统并非主判题链路的一部分，而是围绕客观判题�
 
 \subsection{模型抽象层与 OpenAI 兼容 Provider 接入}
 
-平台未硬编码任何具体厂商 SDK，而是通过 Vercel AI SDK 的 Provider 抽象统一访问远端模型\cite{aisdk2024docs}。具体而言，\path{src/lib/ai.ts} 通过 \texttt{createOpenAICompatible} 工厂方法，结合从环境变量读取的 \texttt{AI\_API\_KEY}、\texttt{AI\_BASE\_URL} 与 \texttt{AI\_MODEL} 三项配置，构造出一个可复用的 \texttt{model} 对象，供 AI 子系统其余模块统一调用。
+平台未硬编码任何具体厂商 SDK，而是通过 Vercel AI SDK 的 Provider 抽象统一访问远端模型\cite{aisdk2024docs}。在 \path{src/lib/ai.ts} 中，\texttt{createOpenAICompatible} 会读取环境变量里的 \texttt{AI\_API\_KEY}、\texttt{AI\_BASE\_URL}、\texttt{AI\_MODEL}，再生成统一的 \texttt{model} 实例，供 AI 子系统各模块直接复用。
 
 这种组织方式有两层工程价值。\textbf{切换模型不改业务代码}：DeepSeek、月之暗面、智谱清言以及 OpenAI 自身都暴露 OpenAI 兼容 \texttt{/v1/chat/completions} 端点，将 \texttt{AI\_BASE\_URL} 与 \texttt{AI\_MODEL} 改成对应值即可在不重构上层逻辑的前提下切换\cite{deepseek2024api}；本文阶段实测使用 DeepSeek 服务。\textbf{敏感信息不进入版本库}：\texttt{API\_KEY} 通过 \texttt{getRequiredEnv} 从进程环境变量读取，缺失时直接抛错，避免开发期忘填、到生产期才崩溃这种延后失败\cite{owasp2021top10}。从架构视角看，模型层对应图~\ref{fig:ch5-ai-arch} 中部的统一模型层，所有调用方仅依赖 \texttt{generateText}/\texttt{streamText}/\texttt{tool} 这三个 SDK 顶层函数，与具体 Provider 解耦。
 
@@ -445,7 +445,7 @@ AI 辅助子系统并非主判题链路的一部分，而是围绕客观判题�
 
 复杂度分析的提示词将 \texttt{Complexity} 取值集合显式写入 \texttt{system} 上下文，八个枚举包括 \texttt{O(1)}、\texttt{O(logN)}、\texttt{O(N)} 等，并要求模型仅返回形如 \texttt{\{"time":"O(N)","space":"O(1)"\}} 的 JSON 对象；返回后立刻用 \texttt{AnalyzeComplexityResponseSchema.safeParse} 校验。这种枚举集合写在提示词中、JSON Schema 写在解析端的双向收敛策略，使最终落到前端的字段一定属于预定义集合，避免出现 \texttt{O(N)\^2}、\texttt{Linear} 等不规范字符串导致雷达图与状态徽章渲染失败。
 
-代码优化按钮则在 \texttt{ai-improve.ts} 中拼装一段更长的提示词：除当前代码与可选错误信息外，还从数据库查询当前题目的英文描述，若缺失则回退到中文，并读取该题目下所有语言的模板代码，再在末尾要求模型仅返回 \texttt{\{ optimizedCode, explanation, issuesFixed \}} 形式的 JSON。值得注意的是，模型实际输出常常包含 \texttt{```json ... ```} 围栏，因此实现先用正则 \texttt{/```(?:json)?\textbackslash s*([\textbackslash s\textbackslash S]*?)```/} 提取代码块内 JSON，再回退到匹配整段文本中第一段花括号包裹内容的宽松策略，最后用 \texttt{OptimizeCodeOutputSchema.safeParse} 做 zod 校验。这种先做宽容解析、再做严格校验的两段式处理避免了把模型偶发的 Markdown 包装直接当作错误抛回前端。
+代码优化按钮对应的逻辑在 \texttt{ai-improve.ts}。提示词里除了当前代码和可选错误信息，还会补充题目描述；优先读取英文题面，缺失时回退中文，同时带上该题目的各语言模板代码。输出格式被限制为 \texttt{\{ optimizedCode, explanation, issuesFixed \}} 的 JSON。模型有时会把结果包在 \texttt{```json ... ```} 围栏中，因此实现先用正则 \texttt{/```(?:json)?\textbackslash s*([\textbackslash s\textbackslash S]*?)```/} 提取代码块 JSON，提取不到再退回到全文第一段花括号内容，最后再通过 \texttt{OptimizeCodeOutputSchema.safeParse} 执行 zod 校验。这个处理顺序可以减少 Markdown 包装带来的误判。
 
 返回到前端后，优化结果不会静默覆盖原代码，而是被存入 \texttt{useProblemEditorStore} 的 \texttt{optimizedCode} 字段；只有当 \texttt{optimizedCode} 非空时，工具栏才会出现 \texttt{ViewToggleButton}，允许学生在 Monaco 普通编辑器与 Diff 编辑器之间切换查看改动。这种原代码不可破坏、改动显式可见、最终由学生决定是否采纳的处理方式与第三章中关于 AI 可控性的非功能要求一致。
 
@@ -553,7 +553,7 @@ AI 子系统的失败兜底策略可归纳为三层。\textbf{对判题主链路
 \endfoot
 工作区布局 & \texttt{localStorage} 中的布局 JSON & 保存题目页多面板布局，使用户刷新页面后仍可保留常用工作区组织方式。 \\
 题目语言选择 & 全局语言键与题目级语言键 & 支持用户在不同题目之间延续语言偏好，同时允许某道题保留独立语言选择。 \\
-题目代码草稿 & \texttt{<problemId>}\allowbreak\texttt{\_<language>} 形式的本地键值 & 在未正式提交前保存当前代码内容，减少误刷新或切换页面导致的草稿丢失。 \\
+题目代码草稿 & \texttt{<problemId>}\allowbreak\texttt{\_<language>} 形式的本地键值 & 正式提交前先把当前代码写入本地，页面误刷新或临时切换时也不容易把草稿弄丢。 \\
 编辑器路径标识 & \path{file:///<problemId>/main.<language>} & 为编辑器和语言服务提供稳定文件标识，便于语法高亮、诊断和语言切换。 \\
 优化代码对比态 & 内存状态与差异视图开关 & 生成优化版本后可切换 Diff 视图，对照原代码与建议改动。 \\
 \bottomrule
@@ -564,7 +564,7 @@ AI 子系统的失败兜底策略可归纳为三层。\textbf{对判题主链路
 
 \subsection{Monaco 编辑器与基于 LSP 的 IDE 级语言服务}
 
-本节结合实现代码说明编辑器能力与语言服务链路，并聚焦与编码体验直接相关的关键模块。
+本节会结合具体实现代码，来说明编辑器能力与语言服务链路的实际落地方式，重点聚焦那些和编码体验直接相关的关键模块。
 
 许多传统在线评测系统仍采用轻量文本框或简化编辑器，常见能力止步于关键字着色与基础缩进。对入门学生而言，这类编辑器在拼写错误、漏写分号、括号不匹配、类型不匹配等高频问题上缺乏即时反馈，学生往往只能依赖编译器输出的大量信息自行定位；在题目规模变大或模板宏较多时，这种反馈链路会显著拉长试错周期。工程实现策略是将浏览器端编辑体验尽量对齐本地 IDE：以微软 Monaco Editor 作为代码编辑内核\cite{monacoeditorrepo}，并通过 Language Server Protocol 即 LSP 与独立的 C/C++ 语言服务器通信，使补全、诊断、悬停提示、签名帮助等能力以标准化方式进入 Web 工作区\cite{lsp2024spec,monacolanguageclientrepo}。
 
@@ -607,7 +607,7 @@ AI 子系统的失败兜底策略可归纳为三层。\textbf{对判题主链路
 \endfoot
 语言切换与模板加载 & 在工具栏切换语言并同步读取对应模板代码 & 方便同一道题在 C、C++ 等不同语言间切换，降低重复初始化成本。 \\
 语言服务状态提示 & 工具栏 \texttt{LSP} 指示灯随 \texttt{WebSocket} 状态变化 & 提示语言服务是否已连通，避免断链时误判为代码无错误。 \\
-诊断波浪线与问题列表 & \texttt{clangd} 经 LSP 推送诊断，Monaco 映射为标记 & 在编辑阶段把拼写/语法/类型问题定位到具体行列，降低仅靠编译日志排错的成本。 \\
+诊断波浪线与问题列表 & \texttt{clangd} 经 LSP 推送诊断，Monaco 映射为标记 & 在编辑阶段就能把拼写、语法、类型问题定位到具体行列，减少只能依赖编译日志排错带来的成本。 \\
 补全与签名帮助 & LSP 标准能力，如 \texttt{completion}/\texttt{signatureHelp} 等 & 提供接近本地 IDE 的输入体验，降低模板附近 API 试错的摩擦。 \\
 复杂度分析 & 见第~\ref{sec:ch5-ai-sse}~节同步辅助小节，返回结构化时间/空间复杂度 & 帮助学生在提交前形成复杂度意识，及早发现低效实现。 \\
 代码优化建议 & 见第~\ref{sec:ch5-ai-sse}~节同步辅助小节，返回独立保存的优化版本 & 为学生提供可参考的改进版本，但不强制覆盖原代码。 \\
