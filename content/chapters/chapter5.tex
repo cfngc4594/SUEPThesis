@@ -61,7 +61,7 @@ AI 分析模块 & analyze-code.ts & 在判题主链路外异步创建 CodeAnalys
 
 \subsection{认证提供方与登录入口页面}
 
-\path{src/lib/auth.ts} 中注册的 \texttt{providers} 包括 \texttt{Credentials}、\texttt{GitHub} 和 \texttt{Google} 三类。\texttt{Credentials} 用于邮箱密码登录，\texttt{authorize} 回调内使用 \texttt{zod} 定义的 \texttt{authSchema} 解析入参，以 \texttt{Prisma} 按邮箱查询用户并以 \texttt{bcrypt.compare} 校验口令散列，校验失败时返回 \texttt{null}。\texttt{GitHub} 启用 \texttt{allowDangerousEmailAccountLinking} 以便与已有邮箱账户做提供方关联，相关风险控制遵循 Auth.js 文档建议\cite{authjsdocs}。\texttt{Google} 的配置方式与 GitHub 同属 OAuth 提供方，登录页同样渲染为第三方按钮；下文以 GitHub 为主描述 OAuth 主流程，Google 与之同构。
+\path{src/lib/auth.ts} 中注册的 \texttt{providers} 包括 \texttt{Credentials}、\texttt{GitHub} 和 \texttt{Google} 三类。\texttt{Credentials} 用于邮箱密码登录，\texttt{authorize} 回调内使用 \texttt{zod} 定义的 \texttt{authSchema} 解析入参，以 \texttt{Prisma} 按邮箱查询用户并以 \texttt{bcrypt.compare} 校验口令散列，校验失败时返回 \texttt{null}。\texttt{GitHub} 启用 \texttt{allowDangerousEmailAccountLinking} 以便与已有邮箱账户做提供方关联，相关风险控制遵循 Auth.js 文档中的安全指引\cite{authjsdocs}。\texttt{Google} 的配置方式与 GitHub 同属 OAuth 提供方，登录页同样渲染为第三方按钮；下文以 GitHub 为主描述 OAuth 主流程，Google 与之同构。
 
 自定义登录页路径为 \texttt{pages.signIn = "/sign-in"}，对应 \path{src/app/(auth)/sign-in/page.tsx}。该页面上方为 \texttt{CredentialsSignInForm}，实现位于 \path{src/components/credentials-sign-in-form.tsx}；下方为分隔线后遍历 \texttt{providerMap} 生成的 OAuth 按钮表单。\texttt{providerMap} 由 \texttt{providers} 派生并\textbf{过滤掉} \texttt{credentials}，避免与上方表单重复\cite{authjsdocs}。注册流程由 \path{src/app/actions/auth.ts} 中的 \texttt{signUpWithCredentials} 完成：校验邮箱未被占用后，以 \texttt{bcrypt.hash} 的 10 轮加盐策略写入密码散列并创建用户；若当前为全库首位用户，则将角色更新为管理员，这与 \texttt{createUser} 事件中将首位用户赋予 \texttt{ADMIN} 角色的逻辑一致。该登录页的 UI 形态见图~\ref{fig:ch5-signin}。
 
@@ -438,7 +438,7 @@ AI 辅助子系统并非主判题链路的一部分，而是围绕客观判题�
 \texttt{readability}\allowbreak\texttt{Score} & 0--100 整数 & 评价代码是否便于阅读和理解，突出教学反馈价值。 \\
 \texttt{efficiencyScore} & 0--100 整数 & 评价算法与实现层面的效率水平，补充复杂度标签之外的解释信息。 \\
 \texttt{correctness}\allowbreak\texttt{Score} & 0--100 整数 & 在不替代客观判题的前提下，给出模型对逻辑正确性的辅助判断。 \\
-\texttt{feedback} & 长文本 & 保存面向学生的解释性反馈、问题定位和改进建议，是 AI 模块最直接的教学输出。 \\
+\texttt{feedback} & 长文本 & 保存面向学生的解释性反馈、问题定位和改进方向，是 AI 模块最直接的教学输出。 \\
 \bottomrule
 \end{longtable}
 \endgroup
@@ -474,7 +474,7 @@ AI 子系统的失败兜底策略可归纳为三层：\textbf{对判题主链路
   \label{fig:ch5-ai-feedback}
 \end{figure}
 
-从实际运行结果看，平台已能够展示 AI 分析卡片、雷达图、综合评分和文本反馈。图~\ref{fig:ch5-ai-feedback} 对应一份结果正确但效率较低的暴力枚举提交，系统给出了 \(O(N^2)\) 的时间复杂度、\(O(1)\) 的空间复杂度以及 65 分的综合评分，并在反馈中建议使用哈希表等方式优化时间复杂度。这一结果同时体现了上文 Tool Calling 强约束，即评分必为 0--100 整数、复杂度必为枚举值之一，并反映了提示词中评分规则的实际效果。
+从实际运行结果看，平台已能够展示 AI 分析卡片、雷达图、综合评分和文本反馈。图~\ref{fig:ch5-ai-feedback} 对应一份结果正确但效率较低的暴力枚举提交，系统给出了 \(O(N^2)\) 的时间复杂度、\(O(1)\) 的空间复杂度以及 65 分的综合评分，并在反馈中给出使用哈希表等方式优化时间复杂度的方向。这一结果同时体现了上文 Tool Calling 强约束，即评分必为 0--100 整数、复杂度必为枚举值之一，并反映了提示词中评分规则的实际效果。
 
 \section{一体化工作区与交互}
 
@@ -559,7 +559,7 @@ AI 子系统的失败兜底策略可归纳为三层：\textbf{对判题主链路
 题目语言选择 & 全局语言键与题目级语言键 & 支持用户在不同题目之间延续语言偏好，同时允许某道题保留独立语言选择。 \\
 题目代码草稿 & \texttt{<problemId>}\allowbreak\texttt{\_<language>} 形式的本地键值 & 正式提交前先把当前代码写入本地，页面误刷新或临时切换时也不容易把草稿弄丢。 \\
 编辑器路径标识 & \path{file:///<problemId>/main.<language>} & 为编辑器和语言服务提供稳定文件标识，便于语法高亮、诊断和语言切换。 \\
-优化代码对比态 & 内存状态与差异视图开关 & 生成优化版本后可切换 Diff 视图，对照原代码与建议改动。 \\
+优化代码对比态 & 内存状态与差异视图开关 & 生成优化版本后可切换 Diff 视图，对照原代码与模型改动。 \\
 \bottomrule
 \end{longtable}
 \endgroup
@@ -589,7 +589,7 @@ AI 子系统的失败兜底策略可归纳为三层：\textbf{对判题主链路
 
 \noindent\textbf{与传统 OJ 编辑器的对比价值。}结合上述实现，平台在编码阶段能够提供三点价值：\textbf{错误前移}，在提交前即可通过诊断标记暴露大量语法与类型问题，减少无意义提交；\textbf{反馈可解释}，诊断与补全携带位置与符号信息，比单纯依赖编译器 stderr 更接近课堂讲解表达习惯；\textbf{工程可运维}，语言服务与业务站点解耦，可按语言横向扩容或替换版本，而不必随每次业务发版耦合发布。对本科教学场景而言，这类能力并不替代判题主链路客观性，但能显著降低学生在模板代码附近卡住的概率，从而把更多认知资源留给算法与测试设计本身。
 
-\noindent\textbf{工具栏对编辑器与 AI 能力的统一收口。}上述 LSP 能力与第~\ref{sec:ch5-ai-sse}~节所述 AI 辅助能力最终都会汇聚到题目工作区上方的代码工具栏 \path{src/features/problems/code/components/toolbar/code-toolbar.tsx}。工具栏把语言切换、模板加载、\texttt{LSP} 状态指示灯、AI 相关按钮 \texttt{AnalyzeButton}、\texttt{OptimizeButton}、\texttt{ViewToggleButton} 与撤销、重做、格式化等基础编辑动作整合到同一行内，使学生在编码过程中无需离开视线焦点即可触发诊断、复杂度分析、优化建议与 Diff 对比等动作。表~\ref{tab:ch5-editor-toolbar} 汇总了工具栏中各能力的实现方式与教学作用，可与图~\ref{fig:problem-workspace} 所示界面对照查看。
+\noindent\textbf{工具栏对编辑器与 AI 能力的统一收口。}上述 LSP 能力与第~\ref{sec:ch5-ai-sse}~节所述 AI 辅助能力最终都会汇聚到题目工作区上方的代码工具栏 \path{src/features/problems/code/components/toolbar/code-toolbar.tsx}。工具栏把语言切换、模板加载、\texttt{LSP} 状态指示灯、AI 相关按钮 \texttt{AnalyzeButton}、\texttt{OptimizeButton}、\texttt{ViewToggleButton} 与撤销、重做、格式化等基础编辑动作整合到同一行内，使学生在编码过程中无需离开视线焦点即可触发诊断、复杂度分析、优化结果与 Diff 对比等动作。表~\ref{tab:ch5-editor-toolbar} 汇总了工具栏中各能力的实现方式与教学作用，可与图~\ref{fig:problem-workspace} 所示界面对照查看。
 
 \begingroup
 \small
@@ -614,7 +614,7 @@ AI 子系统的失败兜底策略可归纳为三层：\textbf{对判题主链路
 诊断波浪线与问题列表 & \texttt{clangd} 经 LSP 推送诊断，Monaco 映射为标记 & 在编辑阶段就能把拼写、语法、类型问题定位到具体行列，减少只能依赖编译日志排错带来的成本。 \\
 补全与签名帮助 & LSP 标准能力，如 \texttt{completion}\allowbreak/\allowbreak\texttt{signatureHelp} 等 & 提供接近本地 IDE 的输入体验，降低模板附近 API 试错的摩擦。 \\
 复杂度分析 & 见第~\ref{sec:ch5-ai-sse}~节同步辅助小节，返回结构化时间/空间复杂度 & 帮助学生在提交前形成复杂度意识，及早发现低效实现。 \\
-代码优化建议 & 见第~\ref{sec:ch5-ai-sse}~节同步辅助小节，返回独立保存的优化版本 & 为学生提供可参考的改进版本，但不强制覆盖原代码。 \\
+代码优化结果 & 见第~\ref{sec:ch5-ai-sse}~节同步辅助小节，返回独立保存的优化版本 & 为学生提供可参考的改进版本，但不强制覆盖原代码。 \\
 Diff 对比视图 & 当 \texttt{optimizedCode} 非空时启用，在普通与 Diff 编辑器间切换 & 突出修改位置与改动性质，便于学习具体优化思路。 \\
 基础编辑辅助 & 撤销、重做、格式化、复制等工具统一集成 & 提升日常编码效率，使工作区更接近实际开发环境。 \\
 \bottomrule

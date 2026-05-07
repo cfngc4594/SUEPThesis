@@ -19,7 +19,7 @@
   \label{fig:ch2-judge-pipeline}
 \end{figure}
 
-除了学术论文，工程社区的开源项目同样提供了直接可用的选型依据。Judge0 提供可部署的在线判题 API 和沙箱执行能力，可作为判题服务化实现的参考\cite{judge0online}；DOMjudge 在题目导入、调度和榜单机制方面积累了长期实践经验\cite{domjudgeonline}。Kubernetes 与 Docker 官方文档则分别给出了编排和容器打包的基础语义与实践建议，可与高校现有云原生基础设施方案对照使用\cite{kubernetesdocs,dockerdocs,huawei2020cloudnativedoc,hezhenwei2020kubernetes}。综合这些材料，本文选择把客观判题主链路与反馈层分开设计，并据此确定系统实现路线。
+除了学术论文，工程社区的开源项目同样提供了直接可用的选型依据。Judge0 提供可部署的在线判题 API 和沙箱执行能力，是判题服务化实现的重要参考\cite{judge0online}；DOMjudge 在题目导入、调度和榜单机制方面积累了长期实践经验\cite{domjudgeonline}。Kubernetes 与 Docker 官方文档则分别给出了编排和容器打包的基础语义与实践指引，可与高校现有云原生基础设施方案对照使用\cite{kubernetesdocs,dockerdocs,huawei2020cloudnativedoc,hezhenwei2020kubernetes}。综合这些材料，本文选择把客观判题主链路与反馈层分开设计，并据此确定系统实现路线。
 
 \section{容器化执行与弹性支撑}
 
@@ -79,7 +79,7 @@ Ihantola 的另一项结论是，某些自动评测能力更适合用于自学�
 
 \section{AI 辅助分析与反馈约束}
 
-大语言模型在代码理解、自然语言生成和上下文推理方面的能力，使其在程序设计教学场景中具备较强的辅助价值。已有研究表明，AI 模型可以根据题目、代码和错误信息生成解释、错误分析和优化建议，从而帮助学生更快理解问题所在\cite{keuning2018feedback,sarsa2022llm,jacobs2024feedback}。
+大语言模型在代码理解、自然语言生成和上下文推理方面的能力，使其在程序设计教学场景中具备较强的辅助价值。已有研究表明，AI 模型可以根据题目、代码和错误信息生成解释、错误分析和优化方向，从而帮助学生更快理解问题所在\cite{keuning2018feedback,sarsa2022llm,jacobs2024feedback}。
 
 但在将 AI 引入在线编程评测平台时，必须明确其边界。AI 输出具有概率性，不同提示语和不同模型版本可能导致反馈内容变化，因此不宜将其作为最终评分或判题依据；AI 也可能给出看似合理但并不完全准确的解释，若缺乏约束会误导学生；在教学场景中还必须关注学术诚信问题，避免 AI 直接给出完整答案而削弱学生独立思考过程。Finnie-Ansley 等关于 Codex 的研究提示，代码生成模型在典型入门题目上可能达到甚至超过部分学生表现，这会直接冲击传统作业与考试形态\cite{finnieansley2022robots}；Denny 等关于 Copilot 提示工程的研究则说明，学生与模型之间的自然语言交互将成为新的能力维度\cite{denny2023conversing}；Kazemitabaar 等通过实验讨论了 AI 代码生成器对新手学习的影响，提示效率提升与依赖风险这两种现象可能并存\cite{kazemitabaar2023chi}。Raihan 等对 LLM 进入计算机教育的系统综述进一步从课程、学习支持与治理等角度总结了研究缺口\cite{raihan2025llmcsed}。
 
