@@ -319,6 +319,9 @@
 
 % 英文默认为Times New Roman
 \setmainfont[Path=./fonts/, BoldFont={*Bold}, ItalicFont={*Italic}, BoldItalicFont={*BoldItalic}]{TimesNewRoman}
+% 为了统一论文中英文视觉风格，将等宽字族也映射为 Times New Roman。
+% 这样 \texttt、\path、代码环境中的西文将尽量与正文字体保持一致。
+\setmonofont[Path=./fonts/, BoldFont={*Bold}, ItalicFont={*Italic}, BoldItalicFont={*BoldItalic}]{TimesNewRoman}
 
 % 伪粗体等级
 % \xeCJKsetup{EmboldenFactor=3} 
@@ -611,7 +614,7 @@
     keywordstyle=\color{magenta},
     numberstyle=\tiny\color{codegray},
     stringstyle=\color{codepurple},
-    basicstyle=\ttfamily\footnotesize,
+    basicstyle=\rmfamily\footnotesize,
     breakatwhitespace=false,
     breaklines=true,
     captionpos=b,
