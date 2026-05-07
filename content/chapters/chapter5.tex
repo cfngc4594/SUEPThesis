@@ -17,7 +17,7 @@
 
 运行环境方面，系统会依据特定配置来区分本地与远程这两种不同类型的 Docker 执行路径。对于本地路径，会运用宿主机套接字对容器实施直接管理，而远程路径，它会按照协议、地址、端口、证书这些参数来建立连接。这样的设计使得判题执行的位置能够从 Web 服务部署中脱离，方便后续朝着专用节点或者集群环境的方向迁移 worker。
 
-从工程生态角度看，本文实现所依赖的关键第三方组件均具有公开可查的文档或源码。容器与镜像语义可参考 Docker 与 OCI 规范\cite{dockerdocs,opencontainers}，编排与云侧扩展路径可参考 Kubernetes 文档与云原生参考材料\cite{kubernetesdocs,huawei2020cloudnativedoc}，关系型数据持久化遵循 PostgreSQL 官方手册所描述的事务与 SQL 语义\cite{postgresqlmanual}，对象关系映射与迁移工具链遵循 Prisma 官方文档\cite{prismadocs}，前端工程栈与路由构建可参考 Next.js 文档\cite{nextjsdocs}。在判题执行服务化方面，Judge0 与 DOMjudge 等开源实现给出了可对照的 API 形态、沙箱边界与运维经验\cite{judge0online,domjudgeonline}。结合这些实践，本文把 Web 服务和独立判题执行环境拆开部署，而不是把全部判题逻辑塞进 Web 进程。
+就工程生态而言，本文实现所依赖的关键第三方组件均具有公开可查的文档或源码。容器与镜像语义可参考 Docker 与 OCI 规范\cite{dockerdocs,opencontainers}，编排与云侧扩展路径可参考 Kubernetes 文档与云原生参考材料\cite{kubernetesdocs,huawei2020cloudnativedoc}，关系型数据持久化遵循 PostgreSQL 官方手册所描述的事务与 SQL 语义\cite{postgresqlmanual}，对象关系映射与迁移工具链遵循 Prisma 官方文档\cite{prismadocs}，前端工程栈与路由构建可参考 Next.js 文档\cite{nextjsdocs}。在判题执行服务化方面，Judge0 与 DOMjudge 等开源实现给出了可对照的 API 形态、沙箱边界与运维经验\cite{judge0online,domjudgeonline}。结合这些实践，本文把 Web 服务和独立判题执行环境拆开部署，而不是把全部判题逻辑塞进 Web 进程。
 
 \begingroup
 \small
@@ -53,7 +53,7 @@ AI 分析模块 & analyze-code.ts & 在判题核心流程外异步创建 CodeAna
 \end{xltabular}
 \endgroup
 
-从实现组织方式上看，当前项目虽然没有完全拆成独立微服务仓库，但已经在代码职责上形成了较清晰的分工。对本科毕设原型而言，这种方式是合适的，既能在单仓内快速完成功能流程，也能保持模块边界清晰。
+在实现组织方式上，当前项目虽然没有完全拆成独立微服务仓库，但已经在代码职责上形成了较清晰的分工。对本科毕设原型而言，这种方式是合适的，既能在单仓内快速完成功能流程，也能保持模块边界清晰。
 
 \section{身份认证与会话管理实现}
 
@@ -125,7 +125,7 @@ Auth.js 配置中，\texttt{callbacks.jwt} 在检测到 \texttt{account.provider
 
 题目实体 Problem 主要承担 displayId、难度、发布状态、时限和内存限制等基础属性。displayId 直接用于题号展示，timeLimit 和 memoryLimit 会直接参与判题阶段的资源约束。ProblemLocalization 通过 problemId、locale、type 这个组合唯一定位本地化文本，用来存放标题、题面、题解，模板代码由 Template 按 problemId 和 language 的组合管理，从而支持多语言场景下的初始代码加载。
 
-从数据一致性角度看，当前模式设计并不是把所有文本和代码都堆在同一张表中，而是通过复合主键和唯一约束保证多语言内容与模板代码的组织稳定性。例如，同一道题目在同一种语言下只能存在一份模板代码，同一道题目在同一种语言和同一种内容类型下也只能存在一份本地化文本。这种设计既减少了重复数据，也让前端读取题目详情时更容易获得确定结果。
+在数据一致性层面，当前模式设计并不是把所有文本和代码都堆在同一张表中，而是通过复合主键和唯一约束保证多语言内容与模板代码的组织稳定性。例如，同一道题目在同一种语言下只能存在一份模板代码，同一道题目在同一种语言和同一种内容类型下也只能存在一份本地化文本。这种设计既减少了重复数据，也让前端读取题目详情时更容易获得确定结果。
 
 \subsection{提交、判题轨迹与分析结果设计}
 
@@ -248,7 +248,7 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
   \label{fig:ch5-problem-detail}
 \end{figure}
 
-从功能边界上看，题库管理模块的主要任务是为判题核心流程提供准确、完整和可维护的数据来源，而不是在论文中展开复杂后台交互细节。因此，本文只描述与题目内容组织、模板代码和测试数据直接相关的实现。
+就功能边界而言，题库管理模块的主要任务是为判题核心流程提供准确、完整和可维护的数据来源，而不是在论文中展开复杂后台交互细节。因此，本文只描述与题目内容组织、模板代码和测试数据直接相关的实现。
 
 系统同时支持按语言维度为题目保存模板代码，使学生进入题目页后可以直接获得对应语言的初始代码。测试数据则通过 Testcase 与 TestcaseInput 共同组织，其中 TestcaseInput 保存有序输入项，便于在运行阶段按顺序组合为标准输入流。
 
@@ -316,7 +316,7 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
 
 本文将部分系统级失败映射为 \texttt{SE} 状态，并在 \texttt{Submission.message} 中写入可读的错误摘要，同时仍尽量保留已创建的提交记录，使前端能够展示一种失败但仍可追踪的状态。这与第四章状态流转设计相呼应，受理记录一旦生成，就应成为排错与复盘的锚点。与此同时，编译与运行阶段的输出在落库前进行长度截断，以避免极端日志撑爆数据库字段或拖慢页面渲染，在教学解释上，这一策略应被理解为保留足够定位信息，而不是无损保存完整 stderr。
 
-从可观测性角度看，判题链路至少应能在日志中关联用户、题目、提交 id 与容器 id 这一最小追踪链。本文实现已将提交 id 贯穿在 \texttt{judge.ts}、Inngest 函数与编译运行模块中，便于定位事件投递、函数执行和容器运行各阶段的问题。原型阶段即使未接入分布式追踪系统，也应在关键异常分支打印结构化日志字段，便于在课程集中提交时快速判断瓶颈究竟出在异步函数吞吐不足，还是出在单机 Docker 资源耗尽\cite{kubernetesdocs}。
+在可观测性层面，判题链路至少应能在日志中关联用户、题目、提交 id 与容器 id 这一最小追踪链。本文实现已将提交 id 贯穿在 \texttt{judge.ts}、Inngest 函数与编译运行模块中，便于定位事件投递、函数执行和容器运行各阶段的问题。原型阶段即使未接入分布式追踪系统，也应在关键异常分支打印结构化日志字段，便于在课程集中提交时快速判断瓶颈究竟出在异步函数吞吐不足，还是出在单机 Docker 资源耗尽\cite{kubernetesdocs}。
 
 \begingroup
 \small
@@ -351,7 +351,7 @@ AI 辅助子系统并非主判题链路的一部分，而是围绕客观判题�
 
 \subsection{子系统总体架构与三类入口}
 
-从工程实现看，平台中所有 AI 调用最终都汇聚到统一的模型抽象层，但在前端表现上对应三类相互独立的入口，分别是\textbf{提交后异步分析}、\textbf{编辑期同步辅助}与\textbf{上下文聊天}。提交后异步分析由 \path{src/app/actions/analyze-code.ts} 提供 \texttt{analyzeCode} Server Action，在判题流程结束后被触发，结果作为 \texttt{CodeAnalysis} 行记录持久化。编辑期同步辅助由 \path{src/app/actions/analyze.ts} 中的 \texttt{analyzeComplexity}、\texttt{optimizeCode} 与 \path{src/app/actions/ai-improve.ts} 中的 \texttt{optimizeCode} 等 Server Action 提供，被工具栏按钮直接调用并以 JSON 形式同步返回。上下文聊天由 \path{src/app/api/chat/route.ts} 暴露的 Route Handler 与浏览器侧 \texttt{useChat} 钩子配合工作，是子系统中唯一以\textbf{流式响应}方式与用户交互的入口\cite{aisdk2024docs,aisdkreact2024docs}。
+工程实现表明，平台中所有 AI 调用最终都汇聚到统一的模型抽象层，但在前端表现上对应三类相互独立的入口，分别是\textbf{提交后异步分析}、\textbf{编辑期同步辅助}与\textbf{上下文聊天}。提交后异步分析由 \path{src/app/actions/analyze-code.ts} 提供 \texttt{analyzeCode} Server Action，在判题流程结束后被触发，结果作为 \texttt{CodeAnalysis} 行记录持久化。编辑期同步辅助由 \path{src/app/actions/analyze.ts} 中的 \texttt{analyzeComplexity}、\texttt{optimizeCode} 与 \path{src/app/actions/ai-improve.ts} 中的 \texttt{optimizeCode} 等 Server Action 提供，被工具栏按钮直接调用并以 JSON 形式同步返回。上下文聊天由 \path{src/app/api/chat/route.ts} 暴露的 Route Handler 与浏览器侧 \texttt{useChat} 钩子配合工作，是子系统中唯一以\textbf{流式响应}方式与用户交互的入口\cite{aisdk2024docs,aisdkreact2024docs}。
 
 \begin{figure}[htbp]
   \centering
@@ -366,7 +366,7 @@ AI 辅助子系统并非主判题链路的一部分，而是围绕客观判题�
 
 平台未硬编码任何具体厂商 SDK，而是通过 Vercel AI SDK 的 Provider 抽象统一访问远端模型\cite{aisdk2024docs}。在 \path{src/lib/ai.ts} 中，\texttt{createOpenAICompatible} 会读取环境变量里的 \texttt{AI\_API\_KEY}、\texttt{AI\_BASE\_URL}、\texttt{AI\_MODEL}，再生成统一的 \texttt{model} 实例，供 AI 子系统各模块直接复用。
 
-这种组织方式有两层工程价值：\textbf{切换模型不改业务代码}，DeepSeek、月之暗面、智谱清言以及 OpenAI 自身都暴露 OpenAI 兼容 \texttt{/v1/chat/completions} 端点，将 \texttt{AI\_BASE\_URL} 与 \texttt{AI\_MODEL} 改成对应值即可在不重构上层逻辑的前提下切换\cite{deepseek2024api}，本文阶段实测使用 DeepSeek 服务。\textbf{敏感信息不进入版本库}，\texttt{API\_KEY} 通过 \texttt{getRequiredEnv} 从进程环境变量读取，缺失时直接抛错，避免开发期忘填、到生产期才崩溃这种延后失败\cite{owasp2021top10}。从架构视角看，模型层对应图~\ref{fig:ch5-ai-arch} 中部的统一模型层。所有调用方仅依赖 \texttt{generateText}/\texttt{streamText}/\texttt{tool} 这三个 SDK 顶层函数，与具体 Provider 解耦。
+这种组织方式有两层工程价值：\textbf{切换模型不改业务代码}，DeepSeek、月之暗面、智谱清言以及 OpenAI 自身都暴露 OpenAI 兼容 \texttt{/v1/chat/completions} 端点，将 \texttt{AI\_BASE\_URL} 与 \texttt{AI\_MODEL} 改成对应值即可在不重构上层逻辑的前提下切换\cite{deepseek2024api}，本文阶段实测使用 DeepSeek 服务。\textbf{敏感信息不进入版本库}，\texttt{API\_KEY} 通过 \texttt{getRequiredEnv} 从进程环境变量读取，缺失时直接抛错，避免开发期忘填、到生产期才崩溃这种延后失败\cite{owasp2021top10}。在架构视角下，模型层对应图~\ref{fig:ch5-ai-arch} 中部的统一模型层。所有调用方仅依赖 \texttt{generateText}/\texttt{streamText}/\texttt{tool} 这三个 SDK 顶层函数，与具体 Provider 解耦。
 
 \subsection{基于 SSE 的聊天流式响应实现}\label{sec:ch5-ai-sse}
 
@@ -474,7 +474,7 @@ AI 子系统的失败兜底策略可归纳为三层：\textbf{对判题流程无
   \label{fig:ch5-ai-feedback}
 \end{figure}
 
-从实际运行结果看，平台已能够展示 AI 分析卡片、雷达图、综合评分和文本反馈。图~\ref{fig:ch5-ai-feedback} 对应一份结果正确但效率较低的暴力枚举提交，系统给出了 \(O(N^2)\) 的时间复杂度、\(O(1)\) 的空间复杂度以及 65 分的综合评分，并在反馈中给出使用哈希表等方式优化时间复杂度的方向。这一结果同时体现了上文 Tool Calling 强约束，即评分必为 0--100 整数、复杂度必为枚举值之一，并反映了提示词中评分规则的实际效果。
+实际运行结果表明，平台已能够展示 AI 分析卡片、雷达图、综合评分和文本反馈。图~\ref{fig:ch5-ai-feedback} 对应一份结果正确但效率较低的暴力枚举提交，系统给出了 \(O(N^2)\) 的时间复杂度、\(O(1)\) 的空间复杂度以及 65 分的综合评分，并在反馈中给出使用哈希表等方式优化时间复杂度的方向。这一结果同时体现了上文 Tool Calling 强约束，即评分必为 0--100 整数、复杂度必为枚举值之一，并反映了提示词中评分规则的实际效果。
 
 \section{一体化工作区与交互}
 
@@ -625,7 +625,7 @@ Diff 对比视图 & 当 \texttt{optimizedCode} 非空时启用，在普通与 Di
 
 前端除桌面主场景外，也实现了平板与移动端的退化布局策略，系统会根据视口宽度切换交互组织：桌面端保留多面板并列与可折叠侧栏，移动端则将侧边内容收纳到抽屉面板，避免窄屏固定多栏造成拥挤。换言之，平台虽然以桌面编程训练为主，但小屏设备仍可完成核心操作链路。
 
-从具体使用方式上看，题目阅读、提交记录回顾、AI 问答和结果查看等信息密集型区域，在桌面端更适合并列呈现，以支持学生边看题、边编码、边复盘这种并行操作，而在平板或手机端，更合理的策略是让核心编辑区域保持主要可见，同时将次级面板收纳为按需展开的区域。本文采用核心内容常驻、辅助内容按需展开的方式，使同一工作区能够适配多类终端。
+就具体使用方式而言，题目阅读、提交记录回顾、AI 问答和结果查看等信息密集型区域，在桌面端更适合并列呈现，以支持学生边看题、边编码、边复盘这种并行操作，而在平板或手机端，更合理的策略是让核心编辑区域保持主要可见，同时将次级面板收纳为按需展开的区域。本文采用核心内容常驻、辅助内容按需展开的方式，使同一工作区能够适配多类终端。
 
 \begingroup
 \small
