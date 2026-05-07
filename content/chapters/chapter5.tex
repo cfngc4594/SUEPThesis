@@ -1,6 +1,6 @@
 \chapter{在线编程评测平台核心实现}
 
-结合项目实现情况，平台采用全栈 Web 应用方式组织前后端能力：前端负责题目展示、代码编辑、提交记录查看与 AI 反馈交互，后端负责题目读取、提交入库、判题调度、容器调用和分析结果持久化。虽然项目部署为统一工程，但在代码职责上已经形成了相对清晰的模块划分。本章重点说明与论文主题最直接相关的核心实现，即题目读取、代码提交、容器化判题、AI 辅助分析以及前端工作区。教师管理、学生管理和统计分析相关页面虽已实现，这里仅在与主链路密切相关处进行说明。
+结合项目实现情况，平台采用全栈 Web 应用方式组织前后端能力：前端负责题目展示、代码编辑、提交记录查看与 AI 反馈交互，后端负责题目读取、提交入库、判题调度、容器调用和分析结果持久化。虽然项目部署为统一工程，但在代码职责上已经形成了相对清晰的模块划分。本章重点说明与论文主题最直接相关的核心实现，即题目读取、代码提交、容器化判题、AI 辅助分析以及前端工作区。教师管理、学生管理和统计分析相关页面虽已实现，这里仅在与核心流程密切相关处进行说明。
 
 \section{整体实现结构}
 
@@ -45,7 +45,7 @@
 容器运行时工具 & docker.ts & 负责本地或远程 Docker 客户端初始化、镜像可用性检查、判题容器创建、提交代码打包上传以及输出流长度控制。 \\
 编译执行模块 & compile.ts & 根据语言生成编译命令，更新提交状态，截断过长编译输出，并把编译结果回写数据库。 \\
 运行判题模块 & process-submission.ts / judge-runtime.ts & 负责逐用例执行、标准输入拼接、输出比对、时间与内存统计、短路终止以及 JudgeRun 落库。 \\
-AI 分析模块 & analyze-code.ts & 在判题主链路外异步创建 CodeAnalysis 记录，调用大模型生成结构化反馈，并维护分析状态流转。 \\
+AI 分析模块 & analyze-code.ts & 在判题核心流程外异步创建 CodeAnalysis 记录，调用大模型生成结构化反馈，并维护分析状态流转。 \\
 题目读取模块 & getProblem.ts & 聚合题目基本信息、模板代码、测试用例和本地化内容，并将题面描述序列化为可直接渲染的 MDX 数据。 \\
 编辑器状态模块 & problem-editor.ts & 维护当前题目的语言选择、草稿代码、编辑器路径、差异视图状态与本地持久化逻辑。 \\
 工作区布局模块 & flexlayout.ts & 管理题目求解工作区的初始布局与本地持久化，使用户可以在统一界面内组织题面、代码、提交和测试面板。 \\
@@ -53,7 +53,7 @@ AI 分析模块 & analyze-code.ts & 在判题主链路外异步创建 CodeAnalys
 \end{xltabular}
 \endgroup
 
-从实现组织方式上看，当前项目虽然没有完全拆成独立微服务仓库，但已经在代码职责上形成了较清晰的分工。对本科毕设原型而言，这种方式是合适的，既能在单仓内快速完成功能闭环，也能保持模块边界清晰。
+从实现组织方式上看，当前项目虽然没有完全拆成独立微服务仓库，但已经在代码职责上形成了较清晰的分工。对本科毕设原型而言，这种方式是合适的，既能在单仓内快速完成功能流程，也能保持模块边界清晰。
 
 \section{身份认证与会话管理实现}
 
@@ -119,7 +119,7 @@ Auth.js 配置中，\texttt{callbacks.jwt} 在检测到 \texttt{account.provider
   \label{fig:ch5-er}
 \end{figure}
 
-当前系统用户模型以 User 实体为核心，记录用户名称、邮箱、密码、头像和角色等信息。角色字段用于区分管理员、教师与普通学生等不同访问主体，并结合认证模块完成登录后的身份识别。对于平台主链路而言，角色机制主要影响题目维护权限和后台访问范围，而不改变学生提交判题的核心流程。
+当前系统用户模型以 User 实体为核心，记录用户名称、邮箱、密码、头像和角色等信息。角色字段用于区分管理员、教师与普通学生等不同访问主体，并结合认证模块完成登录后的身份识别。对于平台核心流程而言，角色机制主要影响题目维护权限和后台访问范围，而不改变学生提交判题的核心流程。
 
 \subsection{题目内容与模板数据设计}
 
@@ -129,7 +129,7 @@ Auth.js 配置中，\texttt{callbacks.jwt} 在检测到 \texttt{account.provider
 
 \subsection{提交、判题轨迹与分析结果设计}
 
-围绕提交流转主链路，平台还需要为每一次代码提交记录其判题状态、逐用例执行轨迹与 AI 辅助分析结果。本小节先以表的形式汇总各核心数据表的字段设计，再结合表中字段说明 \texttt{Submission} 状态码的取值含义，以及围绕这些表所设置的关键数据约束，最后回到提交、判题轨迹与分析结果三者之间的协作关系上展开说明。
+围绕提交流转核心流程，平台还需要为每一次代码提交记录其判题状态、逐用例执行轨迹与 AI 辅助分析结果。本小节先以表的形式汇总各核心数据表的字段设计，再结合表中字段说明 \texttt{Submission} 状态码的取值含义，以及围绕这些表所设置的关键数据约束，最后回到提交、判题轨迹与分析结果三者之间的协作关系上展开说明。
 
 \begingroup
 \small
@@ -153,7 +153,7 @@ User & id, email, password, role, image & 这一表主要把账号和角色这�
 Problem & id, displayId, difficulty, isPublished, timeLimit, memoryLimit, isTrim & 描述题目的基础约束与评测配置，是题库管理和判题流程的核心实体。 \\
 Problem\allowbreak Localization & problemId, locale, type, content & 按语言和内容类型存储题目标题、题面描述与题解等文本信息，支持多语言展示。 \\
 Template & problemId, language, content & 保存不同编程语言对应的模板代码，供用户进入题目页后直接加载。 \\
-Submission & id, language, content, status, message, timeUsage, memoryUsage, userId, problemId & 该表按提交维度保存代码内容、判题状态、错误信息和资源消耗数据，判题主链路的多数状态流转都围绕它展开。 \\
+Submission & id, language, content, status, message, timeUsage, memoryUsage, userId, problemId & 该表按提交维度保存代码内容、判题状态、错误信息和资源消耗数据，判题核心流程的多数状态流转都围绕它展开。 \\
 Judge & id, submissionId, status, startTime, endTime, compileOutput & 这里会把一次提交在判题阶段的关键轨迹记录下来，编译输出也会被完整保留，方便后面按提交粒度去回溯全过程。 \\
 JudgeRun & id, judgeId, testcaseId, status, timeUsage, memoryUsage, stdin, stdout, stderr & 保存逐用例执行结果与输入输出信息，支撑失败定位与详情展示。 \\
 Testcase & id, expectedOutput, problemId & 保存标准测试用例及其期望输出，为程序运行结果判定提供依据。 \\
@@ -248,7 +248,7 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
   \label{fig:ch5-problem-detail}
 \end{figure}
 
-从功能边界上看，题库管理模块的主要任务是为判题主链路提供准确、完整和可维护的数据来源，而不是在论文中展开复杂后台交互细节。因此，本文只描述与题目内容组织、模板代码和测试数据直接相关的实现。
+从功能边界上看，题库管理模块的主要任务是为判题核心流程提供准确、完整和可维护的数据来源，而不是在论文中展开复杂后台交互细节。因此，本文只描述与题目内容组织、模板代码和测试数据直接相关的实现。
 
 系统同时支持按语言维度为题目保存模板代码，使学生进入题目页后可以直接获得对应语言的初始代码。测试数据则通过 Testcase 与 TestcaseInput 共同组织，其中 TestcaseInput 保存有序输入项，便于在运行阶段按顺序组合为标准输入流。
 
@@ -351,7 +351,7 @@ AI 辅助子系统并非主判题链路的一部分，而是围绕客观判题�
 
 \subsection{子系统总体架构与三类入口}
 
-从工程实现看，平台中所有 AI 调用最终都汇聚到统一的模型抽象层，但在前端表现上对应三类相互独立的入口，分别是\textbf{提交后异步分析}、\textbf{编辑期同步辅助}与\textbf{上下文聊天}。提交后异步分析由 \path{src/app/actions/analyze-code.ts} 提供 \texttt{analyzeCode} Server Action，在判题主链路结束后被触发，结果作为 \texttt{CodeAnalysis} 行记录持久化。编辑期同步辅助由 \path{src/app/actions/analyze.ts} 中的 \texttt{analyzeComplexity}、\texttt{optimizeCode} 与 \path{src/app/actions/ai-improve.ts} 中的 \texttt{optimizeCode} 等 Server Action 提供，被工具栏按钮直接调用并以 JSON 形式同步返回。上下文聊天由 \path{src/app/api/chat/route.ts} 暴露的 Route Handler 与浏览器侧 \texttt{useChat} 钩子配合工作，是子系统中唯一以\textbf{流式响应}方式与用户交互的入口\cite{aisdk2024docs,aisdkreact2024docs}。
+从工程实现看，平台中所有 AI 调用最终都汇聚到统一的模型抽象层，但在前端表现上对应三类相互独立的入口，分别是\textbf{提交后异步分析}、\textbf{编辑期同步辅助}与\textbf{上下文聊天}。提交后异步分析由 \path{src/app/actions/analyze-code.ts} 提供 \texttt{analyzeCode} Server Action，在判题流程结束后被触发，结果作为 \texttt{CodeAnalysis} 行记录持久化。编辑期同步辅助由 \path{src/app/actions/analyze.ts} 中的 \texttt{analyzeComplexity}、\texttt{optimizeCode} 与 \path{src/app/actions/ai-improve.ts} 中的 \texttt{optimizeCode} 等 Server Action 提供，被工具栏按钮直接调用并以 JSON 形式同步返回。上下文聊天由 \path{src/app/api/chat/route.ts} 暴露的 Route Handler 与浏览器侧 \texttt{useChat} 钩子配合工作，是子系统中唯一以\textbf{流式响应}方式与用户交互的入口\cite{aisdk2024docs,aisdkreact2024docs}。
 
 \begin{figure}[htbp]
   \centering
@@ -406,7 +406,7 @@ AI 辅助子系统并非主判题链路的一部分，而是围绕客观判题�
   \label{fig:ch5-ai-analyze-pipeline}
 \end{figure}
 
-\noindent\textbf{异步状态机与判题主链路解耦。}\texttt{analyzeCode} 进入函数体后立即创建一条 \texttt{status="QUEUED"} 的 \texttt{CodeAnalysis} 记录，再在 \texttt{try} 块内推进到 \texttt{PROCESSING}，调用模型，并在工具回调内完成 \texttt{COMPLETED} 写入，任何一步异常都会被 \texttt{catch} 捕获并把状态置为 \texttt{FAILED}，见图~\ref{fig:ch5-ai-analyze-pipeline}。这种先建占位记录再推进状态的模式有两个直接好处。前端无需轮询时使用复杂的记录是否存在判断逻辑，统一查同一行的 \texttt{status} 字段即可。即便模型返回超时或调用方进程被回收，最终落库状态仍能反映任务启动但未完成这一事实，便于教师与运维人员排查。在与判题主链路的关系上，分析任务由 Server Action 异步触发但不阻塞判题返回，因此即便 AI 服务故障，学生仍可拿到 \texttt{AC}/\texttt{WA} 等标准结果，仅看不到分析卡片。
+\noindent\textbf{异步状态机与判题流程解耦。}\texttt{analyzeCode} 进入函数体后立即创建一条 \texttt{status="QUEUED"} 的 \texttt{CodeAnalysis} 记录，再在 \texttt{try} 块内推进到 \texttt{PROCESSING}，调用模型，并在工具回调内完成 \texttt{COMPLETED} 写入，任何一步异常都会被 \texttt{catch} 捕获并把状态置为 \texttt{FAILED}，见图~\ref{fig:ch5-ai-analyze-pipeline}。这种先建占位记录再推进状态的模式有两个直接好处。前端无需轮询时使用复杂的记录是否存在判断逻辑，统一查同一行的 \texttt{status} 字段即可。即便模型返回超时或调用方进程被回收，最终落库状态仍能反映任务启动但未完成这一事实，便于教师与运维人员排查。在与判题流程的关系上，分析任务由 Server Action 异步触发但不阻塞判题返回，因此即便 AI 服务故障，学生仍可拿到 \texttt{AC}/\texttt{WA} 等标准结果，仅看不到分析卡片。
 
 \noindent\textbf{Tool Calling 强约束输出。}为避免模型以 JSON 自由文本回答后再走正则解析这一脆弱方案，本实现采用 Vercel AI SDK 的 \texttt{tool} 与 \texttt{toolChoice} 联合机制\cite{aisdk2024docs}。在 \texttt{generateText} 调用中声明唯一一个名为 \texttt{saveCodeAnalysis} 的工具，其入参由 \texttt{zod} 直接描述为一组结构化字段，包含时间复杂度、空间复杂度、五项 0 到 100 整数分数与一段长文本反馈，详见表~\ref{tab:ch5-codeanalysis-fields}。其回调函数直接以这些字段更新对应 \texttt{CodeAnalysis} 记录并把状态推进到 \texttt{COMPLETED}。同时通过 \texttt{toolChoice} 指定该工具为强制调用项，使模型在本次响应中必须以工具调用形式返回结构化结果，不允许产生自由文本。
 
@@ -463,7 +463,7 @@ AI 辅助子系统并非主判题链路的一部分，而是围绕客观判题�
 
 \subsection{故障兜底与教学边界}
 
-AI 子系统的失败兜底策略可归纳为三层：\textbf{对判题主链路无影响}：所有 AI 调用都以 Server Action 或独立 Route Handler 形式存在，不在 \texttt{judge.ts} 主链路上同步等待，因而即使模型不可达、配额耗尽或返回格式错误，学生仍能完成提交并获得标准 \texttt{AC}/\texttt{WA}/\texttt{TLE} 等结果。\textbf{结构化字段降级}：在 \texttt{analyze-code.ts} 中所有 zod 字段均为 \texttt{optional}，若模型返回缺少某些维度，最终表现只是部分字段为空，而不是整条记录写入失败，前端只需对空值显示占位即可，不影响其他字段渲染。\textbf{状态可观测}：所有失败分支都把状态写为 \texttt{FAILED} 并保留时间戳，配合后台日志可以快速判断问题位于模型调用前、模型超时，还是工具回调内 SQL 写入失败。
+AI 子系统的失败兜底策略可归纳为三层：\textbf{对判题流程无影响}：所有 AI 调用都以 Server Action 或独立 Route Handler 形式存在，不在 \texttt{judge.ts} 核心流程上同步等待，因而即使模型不可达、配额耗尽或返回格式错误，学生仍能完成提交并获得标准 \texttt{AC}/\texttt{WA}/\texttt{TLE} 等结果。\textbf{结构化字段降级}：在 \texttt{analyze-code.ts} 中所有 zod 字段均为 \texttt{optional}，若模型返回缺少某些维度，最终表现只是部分字段为空，而不是整条记录写入失败，前端只需对空值显示占位即可，不影响其他字段渲染。\textbf{状态可观测}：所有失败分支都把状态写为 \texttt{FAILED} 并保留时间戳，配合后台日志可以快速判断问题位于模型调用前、模型超时，还是工具回调内 SQL 写入失败。
 
 教学边界方面，本子系统遵守第三章给出的 AI 可控性原则：聊天面板的 system prompt 强调要用用户语言回复并保持简洁，而非直接给出完整答案，优化代码不会覆盖原代码，且需用户主动按按钮才会触发，分析结果与客观判题状态分离存储，从数据模型层面阻断了 AI 评分污染判题结果的可能。这些工程化处理使 AI 在系统中始终扮演解释与提示的角色，而非充当裁判。
 
@@ -480,7 +480,7 @@ AI 子系统的失败兜底策略可归纳为三层：\textbf{对判题主链路
 
 \subsection{课程与作业组织实现}
 
-除评测主链路外，系统已实现面向教学组织的课程与作业基础功能。数据层包含课程、选课关系、作业及作业题目关联等核心结构，提交记录可关联作业上下文，业务层支持教师创建课程、维护学生名单、创建并发布作业、查看作业统计，学生可按课程视角进入作业并完成提交。该部分在系统中已形成可用闭环，本文在此给出概要说明，详细交互流程与页面细节不再逐页展开。
+除评测核心流程外，系统已实现面向教学组织的课程与作业基础功能。数据层包含课程、选课关系、作业及作业题目关联等核心结构，提交记录可关联作业上下文，业务层支持教师创建课程、维护学生名单、创建并发布作业、查看作业统计，学生可按课程视角进入作业并完成提交。该部分在系统中已形成可用流程，本文在此给出概要说明，详细交互流程与页面细节不再逐页展开。
 
 \begin{figure}[htbp]
   \centering
@@ -500,9 +500,9 @@ AI 子系统的失败兜底策略可归纳为三层：\textbf{对判题主链路
 
 \subsection{前端工作区组织与首页入口}
 
-平台前端整体采用面向任务求解的一体化工作区组织方式：在用户进入具体题目之前，由首页承载平台定位、语言/主题切换与功能导航，进入题目页后，则将题面描述、代码编辑、提交记录、题解、测试用例、提交详情以及 AI 助手面板组合到统一视图，见图~\ref{fig:problem-workspace}，使学生无需在多个独立页面之间来回切换即可完成读题、编码、提交、查看判题与获取反馈这一完整过程。这种工作区式交互更符合程序设计训练的使用习惯，后文涉及的 LSP 诊断、AI 助手面板与 Diff 视图等能力也都挂载在同一工作区内，学生编码时不必跳到其他页面去触发。
+平台前端整体采用面向任务求解的一体化工作区组织方式：在用户进入具体题目之前，由首页承载平台定位、语言/主题切换与功能导航，进入题目页后，则将题面描述、代码编辑、提交记录、题解、测试用例、提交详情以及 AI 助手面板组合到统一视图，见图~\ref{fig:problem-workspace}，使学生无需在多个独立页面之间来回切换即可完成读题、编码、提交、查看判题与获取反馈这一完整过程。这种工作区式交互更符合程序设计训练的使用习惯，后文涉及的 LSP 诊断、AI 助手面板与 Diff 视图等功能也都挂载在同一工作区内，学生编码时不必跳到其他页面去触发。
 
-首页采用与工作区相互呼应的两层组织：移动端保持纵向单列、保证核心入口可达，桌面端则以卡片形式概括移动端适配、Docker 运行环境与语言服务等关键能力，便于新用户在做题前先建立平台能力的整体认知。
+首页采用与工作区相互呼应的两层组织：移动端保持纵向单列、保证核心入口可达，桌面端则以卡片形式概括移动端适配、Docker 运行环境与语言服务等关键功能，便于新用户在做题前先建立平台功能的整体认知。
 
 \begin{figure}[htbp]
   \centering
@@ -531,7 +531,7 @@ AI 子系统的失败兜底策略可归纳为三层：\textbf{对判题主链路
 
 \subsection{国际化、多语言与主题一致性}
 
-平台的多语言能力由数据层与界面层共同构成，数据层借助 \texttt{ProblemLocalization} 按 \texttt{locale} 组织题目标题、题面描述与题解说明，使同一道题目在不同语言下呈现一致的题面结构，界面层则需要系统化的国际化 i18n 组织来承载导航、按钮、错误提示、判题状态解释、AI 面板标题等高频文本，否则会出现题面是英文但按钮仍是中文这一类割裂体验。
+平台的多语言支持由数据层与界面层共同构成，数据层借助 \texttt{ProblemLocalization} 按 \texttt{locale} 组织题目标题、题面描述与题解说明，使同一道题目在不同语言下呈现一致的题面结构，界面层则需要系统化的国际化 i18n 组织来承载导航、按钮、错误提示、判题状态解释、AI 面板标题等高频文本，否则会出现题面是英文但按钮仍是中文这一类割裂体验。
 
 界面 i18n 工程实现采用 \texttt{next-intl} 与 Next.js App Router 结合：服务端组件通过 \texttt{getTranslations}/\texttt{getLocale} 读取当前语言环境下的文案，客户端组件通过 \texttt{useTranslations}/\texttt{useLocale} 绑定交互控件标签，语言偏好通过 Cookie 在请求之间保持，使刷新与导航后仍能获得一致的语言上下文\cite{nextjsdocs}。翻译资源以消息字典形式按命名空间集中维护，页面与组件只引用键路径而不硬编码长字符串。新增页面时可借助键缺失检测尽早发现漏翻译，若课程方需要调整术语例如将提交统一改为评测提交，只需改字典而无需在大量组件中全文搜索替换，服务端渲染路径与客户端 hydration 路径读取同一套消息源，可以减少首屏与二次渲染之间的语言不一致问题。
 
@@ -568,9 +568,9 @@ AI 子系统的失败兜底策略可归纳为三层：\textbf{对判题主链路
 
 \subsection{Monaco 编辑器与基于 LSP 的 IDE 级语言服务}
 
-本节会结合具体实现代码，来说明编辑器能力与语言服务链路的实际落地方式，重点聚焦那些和编码体验直接相关的关键模块。
+本节会结合具体实现代码，来说明编辑器功能与语言服务链路的实际落地方式，重点聚焦那些和编码体验直接相关的关键模块。
 
-许多传统在线评测系统仍采用轻量文本框或简化编辑器，常见能力止步于关键字着色与基础缩进。对入门学生而言，这类编辑器在拼写错误、漏写分号、括号不匹配、类型不匹配等高频问题上缺乏即时反馈，学生往往只能依赖编译器输出的大量信息自行定位，在题目规模变大或模板宏较多时，这种反馈链路会显著拉长试错周期。工程实现策略是将浏览器端编辑体验尽量对齐本地 IDE：以微软 Monaco Editor 作为代码编辑内核\cite{monacoeditorrepo}，并通过 Language Server Protocol 即 LSP 与独立的 C/C++ 语言服务器通信，使补全、诊断、悬停提示、签名帮助等能力以标准化方式进入 Web 工作区\cite{lsp2024spec,monacolanguageclientrepo}。
+许多传统在线评测系统仍采用轻量文本框或简化编辑器，常见功能止步于关键字着色与基础缩进。对入门学生而言，这类编辑器在拼写错误、漏写分号、括号不匹配、类型不匹配等高频问题上缺乏即时反馈，学生往往只能依赖编译器输出的大量信息自行定位，在题目规模变大或模板宏较多时，这种反馈链路会显著拉长试错周期。工程实现策略是将浏览器端编辑体验尽量对齐本地 IDE：以微软 Monaco Editor 作为代码编辑内核\cite{monacoeditorrepo}，并通过 Language Server Protocol 即 LSP 与独立的 C/C++ 语言服务器通信，使补全、诊断、悬停提示、签名帮助等功能以标准化方式进入 Web 工作区\cite{lsp2024spec,monacolanguageclientrepo}。
 
 \noindent\textbf{前端依赖与编辑器基础能力。}题目求解页的实现栈以 \texttt{@monaco-editor/react} 与 \texttt{monaco-editor} 为核心，并配合 \texttt{monaco-languageclient}、\texttt{vscode-languageclient} 与 \texttt{vscode-ws-jsonrpc} 将 LSP 的 JSON-RPC 消息映射到浏览器 \texttt{WebSocket} 传输层\cite{monacolanguageclientrepo}。编辑器默认选项在 \path{src/config/editor.ts} 中集中配置，启用 ligatures、括号配对着色、缩进参考线、粘性滚动、平滑滚动与自动换行等特性，使长时间读码与改码的视觉负担更低。主题方面，工程使用 Shiki 高亮器并通过 \texttt{@shikijs/monaco} 将配色注册到 Monaco，从而使代码区与站点深浅色主题保持一致，与图~\ref{fig:dark-theme-workspace} 所示工作区观感一致。
 
@@ -587,9 +587,9 @@ AI 子系统的失败兜底策略可归纳为三层：\textbf{对判题主链路
   \label{fig:ch5-lsp-arch}
 \end{figure}
 
-\noindent\textbf{与传统 OJ 编辑器的对比价值。}结合上述实现，平台在编码阶段能够提供三点价值：\textbf{错误前移}，在提交前即可通过诊断标记暴露大量语法与类型问题，减少无意义提交，\textbf{反馈可解释}，诊断与补全携带位置与符号信息，比单纯依赖编译器 stderr 更接近课堂讲解表达习惯，\textbf{工程可运维}，语言服务与业务站点解耦，可按语言横向扩容或替换版本，而不必随每次业务发版耦合发布。对本科教学场景而言，这类能力并不替代判题主链路客观性，但能显著降低学生在模板代码附近卡住的概率，从而把更多认知资源留给算法与测试设计本身。
+\noindent\textbf{与传统 OJ 编辑器的对比价值。}结合上述实现，平台在编码阶段能够提供三点价值：\textbf{错误前移}，在提交前即可通过诊断标记暴露大量语法与类型问题，减少无意义提交，\textbf{反馈可解释}，诊断与补全携带位置与符号信息，比单纯依赖编译器 stderr 更接近课堂讲解表达习惯，\textbf{工程可运维}，语言服务与业务站点解耦，可按语言横向扩容或替换版本，而不必随每次业务发版耦合发布。对本科教学场景而言，这类支持并不替代判题流程的客观性，但能显著降低学生在模板代码附近卡住的概率，从而把更多认知资源留给算法与测试设计本身。
 
-\noindent\textbf{工具栏对编辑器与 AI 能力的统一收口。}上述 LSP 能力与第~\ref{sec:ch5-ai-sse}~节所述 AI 辅助能力最终都会汇聚到题目工作区上方的代码工具栏 \path{src/features/problems/code/components/toolbar/code-toolbar.tsx}。工具栏把语言切换、模板加载、\texttt{LSP} 状态指示灯、AI 相关按钮 \texttt{AnalyzeButton}、\texttt{OptimizeButton}、\texttt{ViewToggleButton} 与撤销、重做、格式化等基础编辑动作整合到同一行内，使学生在编码过程中无需离开视线焦点即可触发诊断、复杂度分析、优化结果与 Diff 对比等动作。表~\ref{tab:ch5-editor-toolbar} 汇总了工具栏中各能力的实现方式与教学作用，可与图~\ref{fig:problem-workspace} 所示界面对照查看。
+\noindent\textbf{工具栏对编辑器与 AI 功能的统一收口。}上述 LSP 支持与第~\ref{sec:ch5-ai-sse}~节所述 AI 辅助功能最终都会汇聚到题目工作区上方的代码工具栏 \path{src/features/problems/code/components/toolbar/code-toolbar.tsx}。工具栏把语言切换、模板加载、\texttt{LSP} 状态指示灯、AI 相关按钮 \texttt{AnalyzeButton}、\texttt{OptimizeButton}、\texttt{ViewToggleButton} 与撤销、重做、格式化等基础编辑动作整合到同一行内，使学生在编码过程中无需离开视线焦点即可触发诊断、复杂度分析、优化结果与 Diff 对比等动作。表~\ref{tab:ch5-editor-toolbar} 汇总了工具栏中各项功能的实现方式与教学作用，可与图~\ref{fig:problem-workspace} 所示界面对照查看。
 
 \begingroup
 \small
@@ -597,14 +597,14 @@ AI 子系统的失败兜底策略可归纳为三层：\textbf{对判题主链路
 \setlength{\LTright}{\fill}
 \setlength{\tabcolsep}{3pt}
 \begin{longtable}{P{0.22\textwidth}P{0.26\textwidth}P{0.40\textwidth}}
-\caption{编辑器辅助能力与教学作用对应关系}\label{tab:ch5-editor-toolbar}\\
+\caption{编辑器辅助功能与教学作用对应关系}\label{tab:ch5-editor-toolbar}\\
 \toprule
-\textbf{辅助能力} & \textbf{实现方式} & \textbf{教学或使用价值} \\
+\textbf{辅助功能} & \textbf{实现方式} & \textbf{教学或使用价值} \\
 \midrule
 \endfirsthead
 \multicolumn{3}{c}{续表\thetable}\\
 \toprule
-\textbf{辅助能力} & \textbf{实现方式} & \textbf{教学或使用价值} \\
+\textbf{辅助功能} & \textbf{实现方式} & \textbf{教学或使用价值} \\
 \midrule
 \endhead
 \bottomrule
@@ -668,14 +668,14 @@ Diff 对比视图 & 当 \texttt{optimizedCode} 非空时启用，在普通与 Di
 
 \section{实现边界说明}
 
-本节用于说明第五章实现结果与第四章设计目标之间的对应关系，明确已完成主链路与系统边界，避免将设计项与已实现功能混写。
+本节用于说明第五章实现结果与第四章设计目标之间的对应关系，明确已完成核心流程与系统边界，避免将设计项与已实现功能混写。
 
 判题入口 \texttt{judge} 位于 \path{src/app/actions/judge.ts}，在接收请求后先完成参数校验并创建状态为 \texttt{QD} 的提交记录，随后通过 \texttt{inngest.send} 投递事件，\path{src/inngest/functions/process-submission.ts} 订阅该事件并异步执行容器准备、编译与逐用例运行流程，底层执行由 \path{src/lib/judge-runtime.ts} 提供。该实现将请求受理与耗时执行解耦，前端可先获得已受理状态，再随着后台处理持续看到状态推进。
 
 与主判题不同，\texttt{CodeAnalysis} 使用独立状态枚举，例如 \texttt{QUEUED}、\texttt{PROCESSING}，由 \texttt{analyzeCode} 在客观判题完成后异步触发，体现主结果确定、解释层后置的拆分方式。判题状态推送与语言服务同样基于 WebSocket 长连接，但二者在频道与事件语义上保持分离：前者通过 \texttt{problem-\{id\}} 与 \texttt{submission-\{id\}} 频道推送提交状态刷新，后者用于编辑期 LSP 会话。
 
-在课程化能力方面，本文已完成课程、选课关系、作业及作业题目关联等核心数据结构，并将作业上下文与提交记录建立关联。基于这一结构，教师端可进行课程维护、学生管理、作业创建与发布及统计查看，学生端也可在课程语境下进入作业并完成提交。总体而言，现有题库、提交、判题轨迹与 AI 分析已经形成可运行的数据闭环。
+在课程化能力方面，本文已完成课程、选课关系、作业及作业题目关联等核心数据结构，并将作业上下文与提交记录建立关联。基于这一结构，教师端可进行课程维护、学生管理、作业创建与发布及统计查看，学生端也可在课程语境下进入作业并完成提交。总体而言，现有题库、提交、判题轨迹与 AI 分析已经形成可运行的数据链条。
 
 \section{本章小结}
 
-本章围绕平台核心模块的实现结果，说明了数据模型、题库组织、在线提交、容器化判题、AI 辅助分析、前端工作区、身份认证与 LSP 等关键内容。结果表明，系统已可在单机环境完成从登录、做题、提交到结果反馈的完整流程，课程与作业组织能力也已形成基本闭环，异步判题与实时状态推送也已接入主链路。
+本章围绕平台核心模块的实现结果，说明了数据模型、题库组织、在线提交、容器化判题、AI 辅助分析、前端工作区、身份认证与 LSP 等关键内容。结果表明，系统已可在单机环境完成从登录、做题、提交到结果反馈的完整流程，课程与作业组织能力也已形成基本流程，异步判题与实时状态推送也已接入核心流程。
