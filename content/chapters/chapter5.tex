@@ -1,6 +1,6 @@
 \chapter{在线编程评测平台核心实现}
 
-结合项目实现情况，平台采用全栈 Web 应用方式组织前后端能力：前端负责题目展示、代码编辑、提交记录查看与 AI 反馈交互，后端负责题目读取、提交入库、判题调度、容器调用和分析结果持久化。虽然项目部署为统一工程，但在代码职责上已经形成了相对清晰的模块划分。本章重点说明与论文主题最直接相关的核心实现，即题目读取、代码提交、容器化判题、AI 辅助分析以及前端工作区，教师管理、学生管理和统计分析相关页面虽已实现，这里仅在与主链路密切相关处进行说明。
+结合项目实现情况，平台采用全栈 Web 应用方式组织前后端能力：前端负责题目展示、代码编辑、提交记录查看与 AI 反馈交互，后端负责题目读取、提交入库、判题调度、容器调用和分析结果持久化。虽然项目部署为统一工程，但在代码职责上已经形成了相对清晰的模块划分。本章重点说明与论文主题最直接相关的核心实现，即题目读取、代码提交、容器化判题、AI 辅助分析以及前端工作区。教师管理、学生管理和统计分析相关页面虽已实现，这里仅在与主链路密切相关处进行说明。
 
 \section{整体实现结构}
 
@@ -17,7 +17,7 @@
 
 运行环境方面，系统会依据特定配置来区分本地与远程这两种不同类型的 Docker 执行路径。对于本地路径，会运用宿主机套接字对容器实施直接管理，而远程路径，它会按照协议、地址、端口、证书这些参数来建立连接。这样的设计使得判题执行的位置能够从 Web 服务部署中脱离，方便后续朝着专用节点或者集群环境的方向迁移 worker。
 
-从工程生态角度看，本文实现所依赖的关键第三方组件均具有公开可查的文档或源码：容器与镜像语义可参考 Docker 与 OCI 规范\cite{dockerdocs,opencontainers}，编排与云侧扩展路径可参考 Kubernetes 文档与云原生参考材料\cite{kubernetesdocs,huawei2020cloudnativedoc}，关系型数据持久化遵循 PostgreSQL 官方手册所描述的事务与 SQL 语义\cite{postgresqlmanual}，对象关系映射与迁移工具链遵循 Prisma 官方文档\cite{prismadocs}，前端工程栈与路由构建可参考 Next.js 文档\cite{nextjsdocs}。在判题执行服务化方面，Judge0 与 DOMjudge 等开源实现给出了可对照的 API 形态、沙箱边界与运维经验\cite{judge0online,domjudgeonline}。结合这些实践，本文把 Web 服务和独立判题执行环境拆开部署，而不是把全部判题逻辑塞进 Web 进程。
+从工程生态角度看，本文实现所依赖的关键第三方组件均具有公开可查的文档或源码。容器与镜像语义可参考 Docker 与 OCI 规范\cite{dockerdocs,opencontainers}，编排与云侧扩展路径可参考 Kubernetes 文档与云原生参考材料\cite{kubernetesdocs,huawei2020cloudnativedoc}，关系型数据持久化遵循 PostgreSQL 官方手册所描述的事务与 SQL 语义\cite{postgresqlmanual}，对象关系映射与迁移工具链遵循 Prisma 官方文档\cite{prismadocs}，前端工程栈与路由构建可参考 Next.js 文档\cite{nextjsdocs}。在判题执行服务化方面，Judge0 与 DOMjudge 等开源实现给出了可对照的 API 形态、沙箱边界与运维经验\cite{judge0online,domjudgeonline}。结合这些实践，本文把 Web 服务和独立判题执行环境拆开部署，而不是把全部判题逻辑塞进 Web 进程。
 
 \begingroup
 \small
@@ -57,13 +57,13 @@ AI 分析模块 & analyze-code.ts & 在判题主链路外异步创建 CodeAnalys
 
 \section{身份认证与会话管理实现}
 
-平台采用 \textbf{Auth.js} 在 Next.js App Router 下完成身份认证，其 npm 包名为 \texttt{next-auth}，工程依赖为 5.x 预发布版本\cite{authjsdocs,nextjsdocs}。Auth.js 通过 \path{src/lib/auth.ts} 导出 \texttt{auth}、\texttt{handlers}、\texttt{signIn} 与 \texttt{signOut}，其中 \texttt{handlers} 由 \path{src/app/api/auth/[...nextauth]/route.ts} 以 \texttt{GET}/\texttt{POST} 形式挂载到 \texttt{/api/auth/*}，从而承接 OAuth 回调与框架内部的会话读写\cite{authjsdocs}。持久化适配器为 \texttt{PrismaAdapter}，用户、账户与会话等记录写入 PostgreSQL，与业务表共享同一数据库\cite{prismadocs}。
+平台采用 \textbf{Auth.js} 在 Next.js App Router 下完成身份认证，其 npm 包名为 \texttt{next-auth}，工程依赖为 5.x 预发布版本\cite{authjsdocs,nextjsdocs}。Auth.js 通过 \path{src/lib/auth.ts} 导出 \texttt{auth}、\texttt{handlers}、\texttt{signIn} 与 \texttt{signOut}。其中 \texttt{handlers} 由 \path{src/app/api/auth/[...nextauth]/route.ts} 以 \texttt{GET}/\texttt{POST} 形式挂载到 \texttt{/api/auth/*}，从而承接 OAuth 回调与框架内部的会话读写\cite{authjsdocs}。持久化适配器为 \texttt{PrismaAdapter}，用户、账户与会话等记录写入 PostgreSQL，与业务表共享同一数据库\cite{prismadocs}。
 
 \subsection{认证提供方与登录入口页面}
 
-\path{src/lib/auth.ts} 中注册的 \texttt{providers} 包括 \texttt{Credentials}、\texttt{GitHub} 和 \texttt{Google} 三类。\texttt{Credentials} 用于邮箱密码登录，\texttt{authorize} 回调内使用 \texttt{zod} 定义的 \texttt{authSchema} 解析入参，以 \texttt{Prisma} 按邮箱查询用户并以 \texttt{bcrypt.compare} 校验口令散列，校验失败时返回 \texttt{null}。\texttt{GitHub} 启用 \texttt{allowDangerousEmailAccountLinking} 以便与已有邮箱账户做提供方关联，相关风险控制遵循 Auth.js 文档中的安全指引\cite{authjsdocs}。\texttt{Google} 的配置方式与 GitHub 同属 OAuth 提供方，登录页同样渲染为第三方按钮，下文以 GitHub 为主描述 OAuth 主流程，Google 与之同构。
+\path{src/lib/auth.ts} 中注册的 \texttt{providers} 包括 \texttt{Credentials}、\texttt{GitHub} 和 \texttt{Google} 三类。\texttt{Credentials} 用于邮箱密码登录，\texttt{authorize} 回调内使用 \texttt{zod} 定义的 \texttt{authSchema} 解析入参，以 \texttt{Prisma} 按邮箱查询用户并以 \texttt{bcrypt.compare} 校验口令散列，校验失败时返回 \texttt{null}。\texttt{GitHub} 启用 \texttt{allowDangerousEmailAccountLinking} 以便与已有邮箱账户做提供方关联，相关风险控制遵循 Auth.js 文档中的安全指引\cite{authjsdocs}。\texttt{Google} 的配置方式与 GitHub 同属 OAuth 提供方，登录页同样渲染为第三方按钮。下文以 GitHub 为主描述 OAuth 主流程，Google 与之同构。
 
-自定义登录页路径为 \texttt{pages.signIn = "/sign-in"}，对应 \path{src/app/(auth)/sign-in/page.tsx}。该页面上方为 \texttt{CredentialsSignInForm}，实现位于 \path{src/components/credentials-sign-in-form.tsx}，下方为分隔线后遍历 \texttt{providerMap} 生成的 OAuth 按钮表单。\texttt{providerMap} 由 \texttt{providers} 派生并\textbf{过滤掉} \texttt{credentials}，避免与上方表单重复\cite{authjsdocs}。注册流程由 \path{src/app/actions/auth.ts} 中的 \texttt{signUpWithCredentials} 完成：校验邮箱未被占用后，以 \texttt{bcrypt.hash} 的 10 轮加盐策略写入密码散列并创建用户，若当前为全库首位用户，则将角色更新为管理员，这与 \texttt{createUser} 事件中将首位用户赋予 \texttt{ADMIN} 角色的逻辑一致。该登录页的 UI 形态见图~\ref{fig:ch5-signin}。
+自定义登录页路径为 \texttt{pages.signIn = "/sign-in"}，对应 \path{src/app/(auth)/sign-in/page.tsx}。该页面上方为 \texttt{CredentialsSignInForm}，实现位于 \path{src/components/credentials-sign-in-form.tsx}，下方为分隔线后遍历 \texttt{providerMap} 生成的 OAuth 按钮表单。\texttt{providerMap} 由 \texttt{providers} 派生并\textbf{过滤掉} \texttt{credentials}，避免与上方表单重复\cite{authjsdocs}。注册流程由 \path{src/app/actions/auth.ts} 中的 \texttt{signUpWithCredentials} 完成。系统先校验邮箱未被占用，再以 \texttt{bcrypt.hash} 的 10 轮加盐策略写入密码散列并创建用户。若当前为全库首位用户，则将角色更新为管理员，这与 \texttt{createUser} 事件中将首位用户赋予 \texttt{ADMIN} 角色的逻辑一致。该登录页的 UI 形态见图~\ref{fig:ch5-signin}。
 
 \begin{figure}[!htbp]
   \centering
@@ -76,11 +76,11 @@ AI 分析模块 & analyze-code.ts & 在判题主链路外异步创建 CodeAnalys
 
 凭据登录在 UI 层并非直接由浏览器调用 \texttt{/api/auth/callback/credentials}，而是先进入 Server Action \texttt{signInWithCredentials}：再次完成 \texttt{zod} 校验、数据库查询与 \texttt{bcrypt} 比对后，调用 \texttt{signIn("credentials", \{ redirect: false \})} 交由 Auth.js 建立会话\cite{authjsdocs}。成功后在客户端以 \texttt{toast} 提示并 \texttt{router.push(callbackUrl || "/")}。
 
-Auth.js 配置中，\texttt{callbacks.jwt} 在检测到 \texttt{account.provider === "credentials"} 时为 \texttt{token} 打上 \texttt{credentials} 标记，随后在 \texttt{jwt.encode} 的自定义实现里，若 \texttt{token.credentials} 为真，则不再走默认 JWT 字符串编码，而是调用工程内的 \texttt{createSession}：生成 UUID 形式的 \texttt{sessionToken}，通过 \texttt{PrismaAdapter.createSession} 写入数据库，并把过期时间设为常量 \texttt{SESSION\_EXPIRY\_MS}，即 30 天。该返回值作为 Cookie 载荷由框架写入，从而使\textbf{凭据登录路径下的会话以数据库会话为主}，便于与 \texttt{PrismaAdapter} 其余表结构统一审计\cite{authjsdocs,prismadocs}。
+Auth.js 配置中，\texttt{callbacks.jwt} 在检测到 \texttt{account.provider === "credentials"} 时为 \texttt{token} 打上 \texttt{credentials} 标记。随后在 \texttt{jwt.encode} 的自定义实现里，若 \texttt{token.credentials} 为真，则不再走默认 JWT 字符串编码，而是调用工程内的 \texttt{createSession}：生成 UUID 形式的 \texttt{sessionToken}，通过 \texttt{PrismaAdapter.createSession} 写入数据库，并把过期时间设为常量 \texttt{SESSION\_EXPIRY\_MS}，即 30 天。该返回值作为 Cookie 载荷由框架写入，从而使\textbf{凭据登录路径下的会话以数据库会话为主}，便于与 \texttt{PrismaAdapter} 其余表结构统一审计\cite{authjsdocs,prismadocs}。
 
 \subsection{GitHub OAuth 登录与受保护业务的衔接}
 
-用户点击 GitHub 按钮时，登录页内联 Server Action 调用 \texttt{signIn("github", \{ redirectTo: callbackUrl \})}。浏览器随后跳转至 GitHub 授权端点，用户在 GitHub 站点完成授权确认后回调本站的 \texttt{/api/auth/callback/github}，最终仍由 \texttt{handlers} 统一处理，流程见图~\ref{fig:ch5-oauth}。与凭据分支不同，OAuth 成功后的 \texttt{jwt.encode} 走 \texttt{next-auth/jwt} 的默认 \texttt{encode}，即\textbf{不进入}上述 \texttt{createSession} 分支，账户绑定与 \texttt{linkAccount} 等事件在 \texttt{events} 钩子中记录结构化日志，便于排查账号合并问题\cite{authjsdocs}。
+用户点击 GitHub 按钮时，登录页内联 Server Action 调用 \texttt{signIn("github", \{ redirectTo: callbackUrl \})}。浏览器随后跳转至 GitHub 授权端点，用户在 GitHub 站点完成授权确认后回调本站的 \texttt{/api/auth/callback/github}，最终仍由 \texttt{handlers} 统一处理，流程见图~\ref{fig:ch5-oauth}。与凭据分支不同，OAuth 成功后的 \texttt{jwt.encode} 走 \texttt{next-auth/jwt} 的默认 \texttt{encode}，即\textbf{不进入}上述 \texttt{createSession} 分支。账户绑定与 \texttt{linkAccount} 等事件在 \texttt{events} 钩子中记录结构化日志，便于排查账号合并问题\cite{authjsdocs}。
 
 \begin{figure}[!htbp]
   \centering
@@ -89,7 +89,7 @@ Auth.js 配置中，\texttt{callbacks.jwt} 在检测到 \texttt{account.provider
   \label{fig:ch5-oauth}
 \end{figure}
 
-无论从哪条分支登录，业务侧在服务端均通过统一的 \texttt{await auth()} 读取会话，例如 \path{src/app/actions/judge.ts} 与 \path{src/app/(protected)/dashboard/layout.tsx}。判题入口据此取得 \texttt{session.user.id}，再写入 \texttt{Submission} 的外键，从而保证提交归属与认证身份一致，同时受保护页面在 layout 层就完成会话校验，未登录用户会被框架重定向到自定义登录页 \texttt{/sign-in}，避免在每个页面或 Server Action 中重复判空。安全方面，OAuth 客户端 ID、Secret 与回调 URL 等敏感配置项均通过 \texttt{getRequiredEnv} 从环境变量读取，缺失即抛错，避免凭据进入版本库或在生产期才暴露问题\cite{owasp2021top10}。两条登录分支的完整时序对比可见图~\ref{fig:ch5-auth-overview}。
+无论从哪条分支登录，业务侧在服务端均通过统一的 \texttt{await auth()} 读取会话，例如 \path{src/app/actions/judge.ts} 与 \path{src/app/(protected)/dashboard/layout.tsx}。判题入口据此取得 \texttt{session.user.id}，再写入 \texttt{Submission} 的外键，从而保证提交归属与认证身份一致。受保护页面在 layout 层就完成会话校验，未登录用户会被框架重定向到自定义登录页 \texttt{/sign-in}，避免在每个页面或 Server Action 中重复判空。安全方面，OAuth 客户端 ID、Secret 与回调 URL 等敏感配置项均通过 \texttt{getRequiredEnv} 从环境变量读取，缺失即抛错，避免凭据进入版本库或在生产期才暴露问题\cite{owasp2021top10}。两条登录分支的完整时序对比可见图~\ref{fig:ch5-auth-overview}。
 
 \begin{figure}[!htbp]
   \centering
@@ -280,13 +280,13 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
 
 把 Submission 记录放在编译、运行之前先创建出来，在工程上有明确意义。用户从点击提交开始就会对应到一条稳定记录，前端也能立即展示这条记录，即使后面编译失败、运行失败或者容器调用失败，错误信息也能统一回写到同一条记录里。在异步链路里，从 \texttt{QD}、\texttt{CP}、\texttt{RU} 到最终状态都持续写回同一条记录，排查问题和事后复盘都会更直接。
 
-在状态联动上，系统同时维护提交级状态与判题轨迹状态。\texttt{Submission.status} 负责前端高频展示与筛选，\texttt{Judge.status} 和 \texttt{JudgeRun.status} 负责编译与逐用例执行细节。两者通过统一映射规则保持一致，避免页面状态与轨迹状态错位。围绕这一映射，状态广播会同步推送到 problem 频道与 submission 频道，前端监听后触发刷新，使提交列表与详情页都能在异步执行期间连续更新。
+在状态联动上，系统同时维护提交级状态与判题轨迹状态，\texttt{Submission.status} 负责前端高频展示与筛选，\texttt{Judge.status} 和 \texttt{JudgeRun.status} 负责编译与逐用例执行细节。两者通过统一映射规则保持一致，避免页面状态与轨迹状态错位。围绕这一映射，状态广播会同步推送到 problem 频道与 submission 频道，前端监听后触发刷新，使提交列表与详情页都能在异步执行期间连续更新。
 
 \subsection{编译流程实现}
 
 编译阶段由 \path{src/inngest/functions/process-submission.ts} 调度 \path{src/app/actions/compile.ts} 执行。函数会先把 Submission 状态更新为编译中，再根据语言类型生成对应命令。本文实现中，C 语言通过 gcc -O2 编译为 main，C++ 通过 g++ -O2 编译为 main。为避免编译日志无限增长，系统对编译输出设置了长度限制，若编译失败，则将错误信息写回 Submission.message，并同步写入 Judge 的 \texttt{compileOutput} 字段，同时把状态更新为 Compilation Error。
 
-编译输出长度限制是一个容易被忽略但实际很有必要的细节。若对编译器标准错误流完全不做限制，极端情况下可能产生非常长的错误日志，不仅增加数据库写入压力，也会影响页面展示和网络传输效率。本文通过受限写入流截断编译输出，只保留限定长度内的错误信息。对于教学场景而言，这样的处理通常不会影响学生定位常见语法错误。
+编译输出长度限制是一个容易被忽略但实际很有必要的细节，若对编译器标准错误流完全不做限制，极端情况下可能产生非常长的错误日志，不仅增加数据库写入压力，也会影响页面展示和网络传输效率。本文通过受限写入流截断编译输出，只保留限定长度内的错误信息。对于教学场景而言，这样的处理通常不会影响学生定位常见语法错误。
 
 \subsection{运行与用例判定实现}
 
@@ -298,7 +298,7 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
 
 要是所有测试用例都通过了，系统会把用例耗时进行汇总，再结合容器统计来更新最终的时间、内存摘要，之后将 Submission 设置为 \texttt{Accepted}。提交记录除了有最终结论之外，还留存了能够用于展示、教学分析的性能信息。
 
-执行阶段按用例顺序逐个运行，不做合并输入批处理。每个用例的输入先按 \texttt{index} 排序，再拼成标准输入送入容器。每个用例的输出和耗时都能单独记录，若出现 \texttt{WA}、\texttt{RE} 或 \texttt{TLE}，可直接定位首个失败用例。
+执行阶段按用例顺序逐个运行，不做合并输入批处理，每个用例的输入先按 \texttt{index} 排序，再拼成标准输入送入容器。每个用例的输出和耗时都能单独记录，若出现 \texttt{WA}、\texttt{RE} 或 \texttt{TLE}，可直接定位首个失败用例。
 
 当全部测试用例均通过时，系统会从各个 JudgeRun 里提取非空时间，并且选取其中最大值当作本次提交的时间摘要，而非仅仅取最后一个用例的耗时。这种做法更贴近在线编程评测平台常见的统计模式。内存使用量是借助容器统计信息提取峰值，从而为页面展示和性能分析提供摘要依据。
 
@@ -308,7 +308,7 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
 
 这种执行方式虽然仍属于单机原型阶段的轻量容器化判题，但已经体现出统一镜像环境、按任务动态创建执行单元、资源限制和最小权限运行等关键思路。对于毕设原型而言，这样的实现复杂度和可展示性之间取得了较好的平衡。
 
-除运行时约束外，容器生命周期管理同样属于安全隔离的一部分。系统在判题动作结束后无论成功还是失败都进入清理流程，尝试停止并删除对应容器，避免临时执行环境在宿主机上持续堆积。对在线编程评测平台而言，这种单次提交对应单次执行环境、执行后立即回收的策略虽然会带来一定容器启动开销，但能够换取更清晰的故障边界和更低的残留风险，尤其适合本科毕设原型阶段对稳定性与可说明性的要求。
+除运行时约束外，容器生命周期管理同样属于安全隔离的一部分，系统在判题动作结束后无论成功还是失败都进入清理流程，尝试停止并删除对应容器，避免临时执行环境在宿主机上持续堆积。对在线编程评测平台而言，这种单次提交对应单次执行环境、执行后立即回收的策略虽然会带来一定容器启动开销，但能够换取更清晰的故障边界和更低的残留风险，尤其适合本科毕设原型阶段对稳定性与可说明性的要求。
 
 \subsection{判题异常路径、错误回写与可观测性}
 
@@ -347,7 +347,7 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
 
 \section{AI 辅助子系统的流式响应与上下文构造实现}
 
-AI 辅助子系统并非主判题链路的一部分，而是围绕客观判题已完成与正在编辑代码这两类时机，为学生提供解释性、提示性与对话性支持的附加能力。本节按总体架构、模型抽象、流式响应、结构化落库、编辑期同步辅助、上下文构造以及边界与兜底七个层次依次展开。其中，流式响应小节专门讨论实现工程中最关键的 SSE 风格数据流细节，这一细节直接决定了上下文聊天面板能否在网页上做到回复内容逐字浮现而非整段等待，并在概念上与第四章异步判题的状态推送同属长连接增量推送范畴。
+AI 辅助子系统并非主判题链路的一部分，而是围绕客观判题已完成与正在编辑代码这两类时机，为学生提供解释性、提示性与对话性支持的附加能力。本节按总体架构、模型抽象、流式响应、结构化落库、编辑期同步辅助、上下文构造以及边界与兜底七个层次依次展开。其中，流式响应小节专门讨论实现工程中最关键的 SSE 风格数据流细节。该细节直接决定了上下文聊天面板能否在网页上做到回复内容逐字浮现而非整段等待，并在概念上与第四章异步判题的状态推送同属长连接增量推送范畴。
 
 \subsection{子系统总体架构与三类入口}
 
@@ -366,7 +366,7 @@ AI 辅助子系统并非主判题链路的一部分，而是围绕客观判题�
 
 平台未硬编码任何具体厂商 SDK，而是通过 Vercel AI SDK 的 Provider 抽象统一访问远端模型\cite{aisdk2024docs}。在 \path{src/lib/ai.ts} 中，\texttt{createOpenAICompatible} 会读取环境变量里的 \texttt{AI\_API\_KEY}、\texttt{AI\_BASE\_URL}、\texttt{AI\_MODEL}，再生成统一的 \texttt{model} 实例，供 AI 子系统各模块直接复用。
 
-这种组织方式有两层工程价值。\textbf{切换模型不改业务代码}：DeepSeek、月之暗面、智谱清言以及 OpenAI 自身都暴露 OpenAI 兼容 \texttt{/v1/chat/completions} 端点，将 \texttt{AI\_BASE\_URL} 与 \texttt{AI\_MODEL} 改成对应值即可在不重构上层逻辑的前提下切换\cite{deepseek2024api}，本文阶段实测使用 DeepSeek 服务。\textbf{敏感信息不进入版本库}：\texttt{API\_KEY} 通过 \texttt{getRequiredEnv} 从进程环境变量读取，缺失时直接抛错，避免开发期忘填、到生产期才崩溃这种延后失败\cite{owasp2021top10}。从架构视角看，模型层对应图~\ref{fig:ch5-ai-arch} 中部的统一模型层，所有调用方仅依赖 \texttt{generateText}/\texttt{streamText}/\texttt{tool} 这三个 SDK 顶层函数，与具体 Provider 解耦。
+这种组织方式有两层工程价值：\textbf{切换模型不改业务代码}，DeepSeek、月之暗面、智谱清言以及 OpenAI 自身都暴露 OpenAI 兼容 \texttt{/v1/chat/completions} 端点，将 \texttt{AI\_BASE\_URL} 与 \texttt{AI\_MODEL} 改成对应值即可在不重构上层逻辑的前提下切换\cite{deepseek2024api}，本文阶段实测使用 DeepSeek 服务。\textbf{敏感信息不进入版本库}，\texttt{API\_KEY} 通过 \texttt{getRequiredEnv} 从进程环境变量读取，缺失时直接抛错，避免开发期忘填、到生产期才崩溃这种延后失败\cite{owasp2021top10}。从架构视角看，模型层对应图~\ref{fig:ch5-ai-arch} 中部的统一模型层。所有调用方仅依赖 \texttt{generateText}/\texttt{streamText}/\texttt{tool} 这三个 SDK 顶层函数，与具体 Provider 解耦。
 
 \subsection{基于 SSE 的聊天流式响应实现}\label{sec:ch5-ai-sse}
 
@@ -378,7 +378,7 @@ AI 辅助子系统并非主判题链路的一部分，而是围绕客观判题�
 
 这一精简实现涉及三个关键 API：\texttt{streamText} 通过 OpenAI 兼容 Provider 向远端模型发起 \texttt{stream:true} 的 Chat Completions 请求，返回一个包装后的流对象，\texttt{toDataStreamResponse} 把该流封装为符合 Vercel AI SDK Data Stream Protocol 的 Web \texttt{Response}\cite{aisdk2024docs}，\texttt{maxDuration} 则以代码声明方式绑定单条长连接的部署级时长约束，便于迁移时同步迁出\cite{nextjsdocs}。
 
-需要严谨说明的是，本文所称的 SSE 风格流式响应在协议层与传统 \texttt{text/event-stream} 标准 SSE 并不完全等同：标准 SSE 由 WHATWG 在 HTML 规范中定义，要求响应 \texttt{Content-Type: text/event-stream}、按 \texttt{event:}/\texttt{data:} 行格式封装，并由浏览器原生 \texttt{EventSource} 接口解析\cite{whatwgeventsource,rfc8895eventsource}。Vercel AI SDK 的 Data Stream Protocol 借鉴了相同的一行一事件、按行解析的思想，但出于可携带二进制安全字符串、支持 POST 请求体以及兼容流式 fetch 的考虑，使用 \texttt{Content-Type: text/plain; charset=utf-8} 与自定义前缀字符，例如 \texttt{0:}、\texttt{2:}、\texttt{e:}、\texttt{f:}，区分文本块、工具调用、错误与完成等帧类型，并依靠 HTTP/1.1 chunked transfer encoding 实现分块推送\cite{aisdk2024docs,rfc7230chunked}。两者的共同特征都是在单条长连接上把一次响应拆为多次增量帧，因此在工程语境下统称为 SSE 风格的增量流式响应是合适的，但读者应注意它并非通过浏览器 \texttt{EventSource} 接口消费，而是由 SDK 在 fetch 之上自行解析。
+需要严谨说明的是，本文所称的 SSE 风格流式响应在协议层与传统 \texttt{text/event-stream} 标准 SSE 并不完全等同。标准 SSE 由 WHATWG 在 HTML 规范中定义，要求响应 \texttt{Content-Type: text/event-stream}、按 \texttt{event:}/\texttt{data:} 行格式封装，并由浏览器原生 \texttt{EventSource} 接口解析\cite{whatwgeventsource,rfc8895eventsource}。Vercel AI SDK 的 Data Stream Protocol 借鉴了相同的一行一事件、按行解析的思想，但出于可携带二进制安全字符串、支持 POST 请求体以及兼容流式 fetch 的考虑，使用 \texttt{Content-Type: text/plain; charset=utf-8} 与自定义前缀字符，例如 \texttt{0:}、\texttt{2:}、\texttt{e:}、\texttt{f:}，区分文本块、工具调用、错误与完成等帧类型，并依靠 HTTP/1.1 chunked transfer encoding 实现分块推送\cite{aisdk2024docs,rfc7230chunked}。两者的共同特征都是在单条长连接上把一次响应拆为多次增量帧，因此在工程语境下统称为 SSE 风格的增量流式响应是合适的。但读者应注意，它并非通过浏览器 \texttt{EventSource} 接口消费，而是由 SDK 在 fetch 之上自行解析。
 
 \noindent\textbf{客户端增量渲染。}浏览器侧的 \path{src/features/problems/bot/components/form.tsx} 没有直接处理 SSE 帧，而是依赖 \texttt{@ai-sdk/react} 的 \texttt{useChat} 钩子\cite{aisdkreact2024docs}。组件挂载时把当前题目描述以 \texttt{role: "system"} 形式注入 \texttt{initialMessages}，钩子返回 \texttt{messages}、\texttt{input}、\texttt{setMessages}、\texttt{handleSubmit} 等受控值与回调，由组件直接消费并渲染对话区与输入框。
 
@@ -457,7 +457,7 @@ AI 辅助子系统并非主判题链路的一部分，而是围绕客观判题�
 
 聊天面板 \path{form.tsx} 的初始消息中放入了一条 \texttt{role: "system"} 的题面消息，格式为 \texttt{Problem description: ...}，并在每次表单提交时再额外把当前编辑器代码以 Markdown 围栏 \texttt{\textasciigrave\textasciigrave\textasciigrave}\textit{language}\textellipsis\texttt{\textasciigrave\textasciigrave\textasciigrave} 包装为另一条 \texttt{role: "system"} 消息，通过 \texttt{setMessages} 追加到对话上下文末尾，再调用 \texttt{handleSubmit} 触发本轮请求。
 
-这种题面常驻、代码现注入的策略在工程上具有两点考虑。题面在用户进入页面时即固定，将其作为初始系统消息可以避免重复传输，代码会被频繁修改，每次提问时拼一份当前代码进入 \texttt{messages}，可保证模型看到的始终是用户\textbf{此刻屏幕上的代码}而非任何缓存版本，这对于回答诸如这一行为什么运行不出来这类具体问题至关重要。
+这种题面常驻、代码现注入的策略在工程上具有两点考虑，题面在用户进入页面时即固定，将其作为初始系统消息可以避免重复传输，代码会被频繁修改，每次提问时拼一份当前代码进入 \texttt{messages}，可保证模型看到的始终是用户\textbf{此刻屏幕上的代码}而非任何缓存版本，这对于回答诸如这一行为什么运行不出来这类具体问题至关重要。
 
 把题面与代码作为 \texttt{system} 消息而非 \texttt{user} 消息也有讲究。OpenAI 兼容协议中，\texttt{system} 消息的语义是模型应当将其作为既定背景理解，与用户当轮提问相分离\cite{deepseek2024api}，这样回答时模型不容易把题面和代码反复抄回给学生，而是聚焦于本轮问题。结合提示词中要求模型以用户当前所用语言回复这一约束，最终效果是模型既知道题目与当前代码，又能用用户熟悉的语言给出简洁回答。
 
@@ -623,7 +623,7 @@ Diff 对比视图 & 当 \texttt{optimizedCode} 非空时启用，在普通与 Di
 
 \subsection{响应式布局与多终端适配}
 
-前端除桌面主场景外，也实现了平板与移动端的退化布局策略。系统会根据视口宽度切换交互组织：桌面端保留多面板并列与可折叠侧栏，移动端则将侧边内容收纳到抽屉面板，避免窄屏固定多栏造成拥挤。换言之，平台虽然以桌面编程训练为主，但小屏设备仍可完成核心操作链路。
+前端除桌面主场景外，也实现了平板与移动端的退化布局策略，系统会根据视口宽度切换交互组织：桌面端保留多面板并列与可折叠侧栏，移动端则将侧边内容收纳到抽屉面板，避免窄屏固定多栏造成拥挤。换言之，平台虽然以桌面编程训练为主，但小屏设备仍可完成核心操作链路。
 
 从具体使用方式上看，题目阅读、提交记录回顾、AI 问答和结果查看等信息密集型区域，在桌面端更适合并列呈现，以支持学生边看题、边编码、边复盘这种并行操作，而在平板或手机端，更合理的策略是让核心编辑区域保持主要可见，同时将次级面板收纳为按需展开的区域。本文采用核心内容常驻、辅助内容按需展开的方式，使同一工作区能够适配多类终端。
 
