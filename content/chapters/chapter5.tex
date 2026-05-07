@@ -52,11 +52,11 @@ AI 分析模块 & \texttt{analyze-code.ts} & 在判题主链路外异步创建 C
 
 \section{身份认证与会话管理实现}
 
-平台采用 \textbf{Auth.js}（npm 包名为 \texttt{next-auth}，工程依赖为 5.x 预发布版本）在 Next.js App Router 下完成身份认证\cite{authjsdocs,nextjsdocs}。Auth.js 通过 \path{src/lib/auth.ts} 导出 \texttt{auth}、\texttt{handlers}、\texttt{signIn} 与 \texttt{signOut}；其中 \texttt{handlers} 由 \path{src/app/api/auth/[...nextauth]/route.ts} 以 \texttt{GET}/\texttt{POST} 形式挂载到 \texttt{/api/auth/*}，从而承接 OAuth 回调与框架内部的会话读写\cite{authjsdocs}。持久化适配器为 \texttt{PrismaAdapter}，用户、账户与会话等记录写入 PostgreSQL，与业务表共享同一数据库\cite{prismadocs}。
+平台采用 \textbf{Auth.js} 在 Next.js App Router 下完成身份认证，其 npm 包名为 \texttt{next-auth}，工程依赖为 5.x 预发布版本\cite{authjsdocs,nextjsdocs}。Auth.js 通过 \path{src/lib/auth.ts} 导出 \texttt{auth}、\texttt{handlers}、\texttt{signIn} 与 \texttt{signOut}；其中 \texttt{handlers} 由 \path{src/app/api/auth/[...nextauth]/route.ts} 以 \texttt{GET}/\texttt{POST} 形式挂载到 \texttt{/api/auth/*}，从而承接 OAuth 回调与框架内部的会话读写\cite{authjsdocs}。持久化适配器为 \texttt{PrismaAdapter}，用户、账户与会话等记录写入 PostgreSQL，与业务表共享同一数据库\cite{prismadocs}。
 
 \subsection{认证提供方与登录入口页面}
 
-\path{src/lib/auth.ts} 中注册的 \texttt{providers} 包括 \texttt{Credentials}、\texttt{GitHub} 和 \texttt{Google} 三类。\texttt{Credentials} 用于邮箱密码登录，\texttt{authorize} 回调内使用 \texttt{authSchema}（\texttt{zod}）解析入参，以 \texttt{Prisma} 按邮箱查询用户并以 \texttt{bcrypt.compare} 校验口令散列，校验失败时返回 \texttt{null}。\texttt{GitHub} 启用 \texttt{allowDangerousEmailAccountLinking} 以便与已有邮箱账户做提供方关联，相关风险控制遵循 Auth.js 文档建议\cite{authjsdocs}。\texttt{Google} 的配置方式与 GitHub 同属 OAuth 提供方，登录页同样渲染为第三方按钮；下文以 GitHub 为主描述 OAuth 主流程，Google 与之同构。
+\path{src/lib/auth.ts} 中注册的 \texttt{providers} 包括 \texttt{Credentials}、\texttt{GitHub} 和 \texttt{Google} 三类。\texttt{Credentials} 用于邮箱密码登录，\texttt{authorize} 回调内使用 \texttt{zod} 定义的 \texttt{authSchema} 解析入参，以 \texttt{Prisma} 按邮箱查询用户并以 \texttt{bcrypt.compare} 校验口令散列，校验失败时返回 \texttt{null}。\texttt{GitHub} 启用 \texttt{allowDangerousEmailAccountLinking} 以便与已有邮箱账户做提供方关联，相关风险控制遵循 Auth.js 文档建议\cite{authjsdocs}。\texttt{Google} 的配置方式与 GitHub 同属 OAuth 提供方，登录页同样渲染为第三方按钮；下文以 GitHub 为主描述 OAuth 主流程，Google 与之同构。
 
 自定义登录页路径为 \texttt{pages.signIn = "/sign-in"}，对应 \path{src/app/(auth)/sign-in/page.tsx}。该页面上方为 \texttt{CredentialsSignInForm}，实现位于 \path{src/components/credentials-sign-in-form.tsx}；下方为分隔线后遍历 \texttt{providerMap} 生成的 OAuth 按钮表单。\texttt{providerMap} 由 \texttt{providers} 派生并\textbf{过滤掉} \texttt{credentials}，避免与上方表单重复\cite{authjsdocs}。注册流程由 \path{src/app/actions/auth.ts} 中的 \texttt{signUpWithCredentials} 完成：校验邮箱未被占用后，以 \texttt{bcrypt.hash} 的 10 轮加盐策略写入密码散列并创建用户；若当前为全库首位用户，则将角色更新为管理员，这与 \texttt{createUser} 事件中将首位用户赋予 \texttt{ADMIN} 角色的逻辑一致。该登录页的 UI 形态见图~\ref{fig:ch5-signin}。
 
@@ -268,7 +268,7 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
 
 \subsection{提交受理与状态流转}
 
-在提交入口处，系统首先校验用户是否登录、题目是否存在、测试用例是否存在以及对应语言的 Docker 配置是否完整。通过这些前置检查，可以避免无效请求直接进入判题流程。校验通过后，\path{src/app/actions/judge.ts} 会创建状态为 \texttt{QD} 的 Submission 记录，并以 \texttt{name="submissions/create"} 的事件将提交 id 投递给 Inngest。这样，HTTP 请求在受理阶段即可快速返回，耗时编译与运行由异步执行链路继续推进。
+在提交入口处，系统会校验用户是否登录、题目是否存在、测试用例是否存在以及对应语言的 Docker 配置是否完整。通过这些前置检查，可以避免无效请求直接进入判题流程。校验通过后，\path{src/app/actions/judge.ts} 会创建状态为 \texttt{QD} 的 Submission 记录，并以 \texttt{name="submissions/create"} 的事件将提交 id 投递给 Inngest。这样，HTTP 请求在受理阶段即可快速返回，耗时编译与运行由异步执行链路继续推进。
 
 将 Submission 记录放在编译和运行之前创建，具有比较明确的工程意义。这样做后，系统从用户点击提交开始就有了稳定的状态载体，前端可以立即展示记录，即使编译、运行或容器调用失败，也能把错误统一回写到同一条记录中。该实现中，这一载体还承担了异步链路中的状态锚点角色：\texttt{QD}、\texttt{CP}、\texttt{RU} 到终态由同一条记录持续流转，便于追踪与复盘。
 
@@ -342,7 +342,7 @@ AI 辅助子系统并非主判题链路的一部分，而是围绕客观判题�
 
 \subsection{子系统总体架构与三类入口}
 
-从工程实现看，平台中所有 AI 调用最终都汇聚到统一的模型抽象层，但在前端表现上对应三类相互独立的入口。其一是\textbf{提交后异步分析}，由 \path{src/app/actions/analyze-code.ts} 提供 \texttt{analyzeCode} Server Action，在判题主链路结束后被触发，结果作为 \texttt{CodeAnalysis} 行记录持久化。其二是\textbf{编辑期同步辅助}，由 \path{src/app/actions/analyze.ts} 中的 \texttt{analyzeComplexity}、\texttt{optimizeCode} 与 \path{src/app/actions/ai-improve.ts} 中的 \texttt{optimizeCode} 等 Server Action 提供，被工具栏按钮直接调用并以 JSON 形式同步返回。其三是\textbf{上下文聊天}，由 \path{src/app/api/chat/route.ts} 暴露的 Route Handler 与浏览器侧 \texttt{useChat} 钩子配合工作，是子系统中唯一以\textbf{流式响应}方式与用户交互的入口\cite{aisdk2024docs,aisdkreact2024docs}。
+从工程实现看，平台中所有 AI 调用最终都汇聚到统一的模型抽象层，但在前端表现上对应三类相互独立的入口，分别是\textbf{提交后异步分析}、\textbf{编辑期同步辅助}与\textbf{上下文聊天}。提交后异步分析由 \path{src/app/actions/analyze-code.ts} 提供 \texttt{analyzeCode} Server Action，在判题主链路结束后被触发，结果作为 \texttt{CodeAnalysis} 行记录持久化。编辑期同步辅助由 \path{src/app/actions/analyze.ts} 中的 \texttt{analyzeComplexity}、\texttt{optimizeCode} 与 \path{src/app/actions/ai-improve.ts} 中的 \texttt{optimizeCode} 等 Server Action 提供，被工具栏按钮直接调用并以 JSON 形式同步返回。上下文聊天由 \path{src/app/api/chat/route.ts} 暴露的 Route Handler 与浏览器侧 \texttt{useChat} 钩子配合工作，是子系统中唯一以\textbf{流式响应}方式与用户交互的入口\cite{aisdk2024docs,aisdkreact2024docs}。
 
 \begin{figure}[htbp]
   \centering
@@ -369,7 +369,7 @@ AI 辅助子系统并非主判题链路的一部分，而是围绕客观判题�
 
 这一精简实现涉及三个关键 API：\texttt{streamText} 通过 OpenAI 兼容 Provider 向远端模型发起 \texttt{stream:true} 的 Chat Completions 请求，返回一个包装后的流对象；\texttt{toDataStreamResponse} 把该流封装为符合 Vercel AI SDK Data Stream Protocol 的 Web \texttt{Response}\cite{aisdk2024docs}；\texttt{maxDuration} 则把单条长连接最长允许保持多久这一部署级约束以代码声明方式与业务文件绑定，便于迁移时同步迁出\cite{nextjsdocs}。
 
-需要严谨说明的是，本文所称的 SSE 风格流式响应在协议层与传统 \texttt{text/event-stream} 标准 SSE 并不完全等同：标准 SSE 由 WHATWG 在 HTML 规范中定义，要求响应 \texttt{Content-Type: text/event-stream}、按 \texttt{event:}/\texttt{data:} 行格式封装，并由浏览器原生 \texttt{EventSource} 接口解析\cite{whatwgeventsource,rfc8895eventsource}。Vercel AI SDK 的 Data Stream Protocol 借鉴了相同的一行一事件、按行解析的思想，但出于可携带二进制安全字符串、支持 POST 请求体以及兼容流式 fetch 的考虑，使用 \texttt{Content-Type: text/plain; charset=utf-8} 与自定义前缀字符（如 \texttt{0:}、\texttt{2:}、\texttt{e:}、\texttt{f:}）区分文本块、工具调用、错误与完成等帧类型，并依靠 HTTP/1.1 chunked transfer encoding 实现分块推送\cite{aisdk2024docs,rfc7230chunked}。两者的共同特征都是在单条长连接上把一次响应拆为多次增量帧，因此在工程语境下统称为 SSE 风格的增量流式响应是合适的；但读者应注意它并非通过浏览器 \texttt{EventSource} 接口消费，而是由 SDK 在 fetch 之上自行解析。
+需要严谨说明的是，本文所称的 SSE 风格流式响应在协议层与传统 \texttt{text/event-stream} 标准 SSE 并不完全等同：标准 SSE 由 WHATWG 在 HTML 规范中定义，要求响应 \texttt{Content-Type: text/event-stream}、按 \texttt{event:}/\texttt{data:} 行格式封装，并由浏览器原生 \texttt{EventSource} 接口解析\cite{whatwgeventsource,rfc8895eventsource}。Vercel AI SDK 的 Data Stream Protocol 借鉴了相同的一行一事件、按行解析的思想，但出于可携带二进制安全字符串、支持 POST 请求体以及兼容流式 fetch 的考虑，使用 \texttt{Content-Type: text/plain; charset=utf-8} 与自定义前缀字符，例如 \texttt{0:}、\texttt{2:}、\texttt{e:}、\texttt{f:}，区分文本块、工具调用、错误与完成等帧类型，并依靠 HTTP/1.1 chunked transfer encoding 实现分块推送\cite{aisdk2024docs,rfc7230chunked}。两者的共同特征都是在单条长连接上把一次响应拆为多次增量帧，因此在工程语境下统称为 SSE 风格的增量流式响应是合适的；但读者应注意它并非通过浏览器 \texttt{EventSource} 接口消费，而是由 SDK 在 fetch 之上自行解析。
 
 \noindent\textbf{第三，客户端增量渲染。}浏览器侧的 \path{src/features/problems/bot/components/form.tsx} 没有直接处理 SSE 帧，而是依赖 \texttt{@ai-sdk/react} 的 \texttt{useChat} 钩子\cite{aisdkreact2024docs}。组件挂载时把当前题目描述以 \texttt{role: "system"} 形式作为 \texttt{initialMessages} 注入，钩子返回 \texttt{messages}、\texttt{input}、\texttt{setMessages}、\texttt{handleSubmit} 等受控值与回调，由组件直接消费用于渲染对话区与输入框。
 
@@ -435,17 +435,17 @@ AI 辅助子系统并非主判题链路的一部分，而是围绕客观判题�
 
 \subsection{编辑期同步辅助：复杂度分析与代码优化}
 
-编辑器工具栏暴露的复杂度分析按钮与代码优化按钮分别由 \path{src/app/actions/analyze.ts} 中的 \texttt{analyzeComplexity} 与 \texttt{optimizeCode} 实现，二者均使用 \texttt{generateText}（非流式）后再做严格的 JSON 解析。
+编辑器工具栏暴露的复杂度分析按钮与代码优化按钮分别由 \path{src/app/actions/analyze.ts} 中的 \texttt{analyzeComplexity} 与 \texttt{optimizeCode} 实现，二者均使用非流式 \texttt{generateText}，随后再做严格的 JSON 解析。
 
-复杂度分析的提示词将 \texttt{Complexity} 取值集合（\texttt{O(1)}、\texttt{O(logN)}、\texttt{O(N)} 等八个枚举）显式写入 \texttt{system} 上下文，并要求模型仅返回形如 \texttt{\{"time":"O(N)","space":"O(1)"\}} 的 JSON 对象；返回后立刻用 \texttt{AnalyzeComplexityResponseSchema.safeParse} 校验。这种枚举集合写在提示词中、JSON Schema 写在解析端的双向收敛策略，使最终落到前端的字段一定属于预定义集合，避免出现 \texttt{O(N)\^2}、\texttt{Linear} 等不规范字符串导致雷达图与状态徽章渲染失败。
+复杂度分析的提示词将 \texttt{Complexity} 取值集合显式写入 \texttt{system} 上下文，八个枚举包括 \texttt{O(1)}、\texttt{O(logN)}、\texttt{O(N)} 等，并要求模型仅返回形如 \texttt{\{"time":"O(N)","space":"O(1)"\}} 的 JSON 对象；返回后立刻用 \texttt{AnalyzeComplexityResponseSchema.safeParse} 校验。这种枚举集合写在提示词中、JSON Schema 写在解析端的双向收敛策略，使最终落到前端的字段一定属于预定义集合，避免出现 \texttt{O(N)\^2}、\texttt{Linear} 等不规范字符串导致雷达图与状态徽章渲染失败。
 
-代码优化按钮则在 \texttt{ai-improve.ts} 中拼装一段更长的提示词：除当前代码与可选错误信息外，还从数据库查询当前题目的英文描述（缺失时回退到中文）以及该题目下所有语言的模板代码，并在末尾要求模型仅返回 \texttt{\{ optimizedCode, explanation, issuesFixed \}} 形式的 JSON。值得注意的是，模型实际输出常常包含 \texttt{```json ... ```} 围栏，因此实现先用正则 \texttt{/```(?:json)?\textbackslash s*([\textbackslash s\textbackslash S]*?)```/} 提取代码块内 JSON，再回退到匹配整段文本中第一段花括号包裹内容的宽松策略，最后用 \texttt{OptimizeCodeOutputSchema.safeParse} 做 zod 校验。这种先做宽容解析、再做严格校验的两段式处理避免了把模型偶发的 Markdown 包装直接当作错误抛回前端。
+代码优化按钮则在 \texttt{ai-improve.ts} 中拼装一段更长的提示词：除当前代码与可选错误信息外，还从数据库查询当前题目的英文描述，若缺失则回退到中文，并读取该题目下所有语言的模板代码，再在末尾要求模型仅返回 \texttt{\{ optimizedCode, explanation, issuesFixed \}} 形式的 JSON。值得注意的是，模型实际输出常常包含 \texttt{```json ... ```} 围栏，因此实现先用正则 \texttt{/```(?:json)?\textbackslash s*([\textbackslash s\textbackslash S]*?)```/} 提取代码块内 JSON，再回退到匹配整段文本中第一段花括号包裹内容的宽松策略，最后用 \texttt{OptimizeCodeOutputSchema.safeParse} 做 zod 校验。这种先做宽容解析、再做严格校验的两段式处理避免了把模型偶发的 Markdown 包装直接当作错误抛回前端。
 
 返回到前端后，优化结果不会静默覆盖原代码，而是被存入 \texttt{useProblemEditorStore} 的 \texttt{optimizedCode} 字段；只有当 \texttt{optimizedCode} 非空时，工具栏才会出现 \texttt{ViewToggleButton}，允许学生在 Monaco 普通编辑器与 Diff 编辑器之间切换查看改动。这种原代码不可破坏、改动显式可见、最终由学生决定是否采纳的处理方式与第三章中关于 AI 可控性的非功能要求一致。
 
 \subsection{聊天面板的上下文构造与题面注入}
 
-聊天面板 \path{form.tsx} 的初始消息中放入了一条 \texttt{role: "system"} 的题面消息（形如 \texttt{Problem description: ...}）；并在每次表单提交时再额外把当前编辑器代码以 Markdown 围栏（\texttt{\textasciigrave\textasciigrave\textasciigrave}\textit{language}\textellipsis\texttt{\textasciigrave\textasciigrave\textasciigrave}）形式包装为另一条 \texttt{role: "system"} 消息，通过 \texttt{setMessages} 追加到对话上下文末尾，再调用 \texttt{handleSubmit} 触发本轮请求。
+聊天面板 \path{form.tsx} 的初始消息中放入了一条 \texttt{role: "system"} 的题面消息，格式为 \texttt{Problem description: ...}；并在每次表单提交时再额外把当前编辑器代码以 Markdown 围栏 \texttt{\textasciigrave\textasciigrave\textasciigrave}\textit{language}\textellipsis\texttt{\textasciigrave\textasciigrave\textasciigrave} 包装为另一条 \texttt{role: "system"} 消息，通过 \texttt{setMessages} 追加到对话上下文末尾，再调用 \texttt{handleSubmit} 触发本轮请求。
 
 这种题面常驻、代码现注入的策略在工程上具有两点考虑：第一，题面在用户进入页面时即固定，将其作为初始系统消息可以避免重复传输；第二，代码会被频繁修改，每次提问时拼一份当前代码进入 \texttt{messages}，可保证模型看到的始终是用户\textbf{此刻屏幕上的代码}而非任何缓存版本，这对于回答诸如这一行为什么运行不出来这类具体问题至关重要。
 
@@ -464,7 +464,7 @@ AI 子系统的失败兜底策略可归纳为三层。第一层是\textbf{对判
   \label{fig:ch5-ai-feedback}
 \end{figure}
 
-从实际运行结果看，平台已能够展示 AI 分析卡片、雷达图、综合评分和文本反馈。图~\ref{fig:ch5-ai-feedback} 对应一份结果正确但效率较低的暴力枚举提交，系统给出了 \(O(N^2)\) 的时间复杂度、\(O(1)\) 的空间复杂度以及 65 分的综合评分，并在反馈中建议使用哈希表等方式优化时间复杂度。这一结果同时体现了上文 Tool Calling 强约束（评分必为 0--100 整数、复杂度必为枚举值之一）和提示词中评分规则的实际效果。
+从实际运行结果看，平台已能够展示 AI 分析卡片、雷达图、综合评分和文本反馈。图~\ref{fig:ch5-ai-feedback} 对应一份结果正确但效率较低的暴力枚举提交，系统给出了 \(O(N^2)\) 的时间复杂度、\(O(1)\) 的空间复杂度以及 65 分的综合评分，并在反馈中建议使用哈希表等方式优化时间复杂度。这一结果同时体现了上文 Tool Calling 强约束，即评分必为 0--100 整数、复杂度必为枚举值之一，并反映了提示词中评分规则的实际效果。
 
 \section{一体化工作区与交互}
 
@@ -490,7 +490,7 @@ AI 子系统的失败兜底策略可归纳为三层。第一层是\textbf{对判
 
 \subsection{前端工作区组织与首页入口}
 
-平台前端整体采用面向任务求解的一体化工作区组织方式：在用户进入具体题目之前，由首页承载平台定位、语言/主题切换与功能导航；进入题目页后，则将题面描述、代码编辑、提交记录、题解、测试用例、提交详情以及 AI 助手面板组合到统一视图（图~\ref{fig:problem-workspace}），使学生无需在多个独立页面之间来回切换即可完成读题、编码、提交、查看判题与获取反馈这一完整过程。这种工作区式交互更符合程序设计训练的使用习惯，后文涉及的 LSP 诊断、AI 助手面板与 Diff 视图等能力也都挂载在同一工作区内，学生编码时不必跳到其他页面去触发。
+平台前端整体采用面向任务求解的一体化工作区组织方式：在用户进入具体题目之前，由首页承载平台定位、语言/主题切换与功能导航；进入题目页后，则将题面描述、代码编辑、提交记录、题解、测试用例、提交详情以及 AI 助手面板组合到统一视图，见图~\ref{fig:problem-workspace}，使学生无需在多个独立页面之间来回切换即可完成读题、编码、提交、查看判题与获取反馈这一完整过程。这种工作区式交互更符合程序设计训练的使用习惯，后文涉及的 LSP 诊断、AI 助手面板与 Diff 视图等能力也都挂载在同一工作区内，学生编码时不必跳到其他页面去触发。
 
 首页采用与工作区相互呼应的两层组织：移动端保持纵向单列、保证核心入口可达，桌面端则以卡片形式概括移动端适配、Docker 运行环境与语言服务等关键能力，便于新用户在做题前先建立平台能力的整体认知。
 
@@ -521,11 +521,11 @@ AI 子系统的失败兜底策略可归纳为三层。第一层是\textbf{对判
 
 \subsection{国际化、多语言与主题一致性}
 
-平台的多语言能力由数据层与界面层共同构成。数据层借助 \texttt{ProblemLocalization} 按 \texttt{locale} 组织题目标题、题面描述与题解说明，使同一道题目在不同语言下呈现一致的题面结构；界面层则需要系统化的国际化（i18n）组织来承载导航、按钮、错误提示、判题状态解释、AI 面板标题等高频文本，否则会出现题面是英文但按钮仍是中文这一类割裂体验。
+平台的多语言能力由数据层与界面层共同构成。数据层借助 \texttt{ProblemLocalization} 按 \texttt{locale} 组织题目标题、题面描述与题解说明，使同一道题目在不同语言下呈现一致的题面结构；界面层则需要系统化的国际化 i18n 组织来承载导航、按钮、错误提示、判题状态解释、AI 面板标题等高频文本，否则会出现题面是英文但按钮仍是中文这一类割裂体验。
 
 界面 i18n 工程实现采用 \texttt{next-intl} 与 Next.js App Router 结合：服务端组件通过 \texttt{getTranslations}/\texttt{getLocale} 读取当前语言环境下的文案，客户端组件通过 \texttt{useTranslations}/\texttt{useLocale} 绑定交互控件标签；语言偏好通过 Cookie 在请求之间保持，使刷新与导航后仍能获得一致的语言上下文\cite{nextjsdocs}。翻译资源以消息字典形式按命名空间集中维护，页面与组件只引用键路径而不硬编码长字符串。新增页面时可借助键缺失检测尽早发现漏翻译；若课程方需要调整术语例如将提交统一改为评测提交，只需改字典而无需在大量组件中全文搜索替换；服务端渲染路径与客户端 hydration 路径读取同一套消息源，可以减少首屏与二次渲染之间的语言不一致问题。
 
-除语言外，工作区还实现了深浅色主题切换，并使普通页面、Monaco 编辑器与差异对比编辑器使用对应主题，避免题面区域、代码区域与 Diff 视图在切换主题后出现明显割裂；这种语言与主题协同收敛的处理方式满足了长时间阅读、对比代码的基本需求。第六章交互测试中的多语言切换项（I-02）即用于核验界面文本与题面语境的一致性，而不仅是验证语言切换功能本身。
+除语言外，工作区还实现了深浅色主题切换，并使普通页面、Monaco 编辑器与差异对比编辑器使用对应主题，避免题面区域、代码区域与 Diff 视图在切换主题后出现明显割裂；这种语言与主题协同收敛的处理方式满足了长时间阅读、对比代码的基本需求。第六章交互测试中的多语言切换项 I-02 即用于核验界面文本与题面语境的一致性，而不仅是验证语言切换功能本身。
 
 \begingroup
 \small
@@ -559,13 +559,13 @@ AI 子系统的失败兜底策略可归纳为三层。第一层是\textbf{对判
 
 本节结合实现代码说明编辑器能力与语言服务链路，并聚焦与编码体验直接相关的关键模块。
 
-许多传统在线评测系统仍采用轻量文本框或简化编辑器，常见能力止步于关键字着色与基础缩进。对入门学生而言，这类编辑器在拼写错误、漏写分号、括号不匹配、类型不匹配等高频问题上缺乏即时反馈，学生往往只能依赖编译器输出的大量信息自行定位；在题目规模变大或模板宏较多时，这种反馈链路会显著拉长试错周期。工程实现策略是将浏览器端编辑体验尽量对齐本地 IDE：以微软 Monaco Editor 作为代码编辑内核\cite{monacoeditorrepo}，并通过 Language Server Protocol（LSP）与独立的 C/C++ 语言服务器通信，使补全、诊断、悬停提示、签名帮助等能力以标准化方式进入 Web 工作区\cite{lsp2024spec,monacolanguageclientrepo}。
+许多传统在线评测系统仍采用轻量文本框或简化编辑器，常见能力止步于关键字着色与基础缩进。对入门学生而言，这类编辑器在拼写错误、漏写分号、括号不匹配、类型不匹配等高频问题上缺乏即时反馈，学生往往只能依赖编译器输出的大量信息自行定位；在题目规模变大或模板宏较多时，这种反馈链路会显著拉长试错周期。工程实现策略是将浏览器端编辑体验尽量对齐本地 IDE：以微软 Monaco Editor 作为代码编辑内核\cite{monacoeditorrepo}，并通过 Language Server Protocol 即 LSP 与独立的 C/C++ 语言服务器通信，使补全、诊断、悬停提示、签名帮助等能力以标准化方式进入 Web 工作区\cite{lsp2024spec,monacolanguageclientrepo}。
 
 \noindent\textbf{第一，前端依赖与编辑器基础能力。}题目求解页的实现栈以 \texttt{@monaco-editor/react} 与 \texttt{monaco-editor} 为核心，并配合 \texttt{monaco-languageclient}、\texttt{vscode-languageclient} 与 \texttt{vscode-ws-jsonrpc} 将 LSP 的 JSON-RPC 消息映射到浏览器 \texttt{WebSocket} 传输层\cite{monacolanguageclientrepo}。编辑器默认选项在 \path{src/config/editor.ts} 中集中配置，启用 ligatures、括号配对着色、缩进参考线、粘性滚动、平滑滚动与自动换行等特性，使长时间读码与改码的视觉负担更低。主题方面，工程使用 Shiki 高亮器并通过 \texttt{@shikijs/monaco} 将配色注册到 Monaco，从而使代码区与站点深浅色主题保持一致，与图~\ref{fig:dark-theme-workspace} 所示工作区观感一致。
 
 \noindent\textbf{第二，语言服务端点注入与连接建立。}语言服务的连接参数并不写死在前端常量中，而是由服务端在渲染题目页时从数据库读取并注入。具体而言，\path{src/features/problems/code/components/content.tsx} 在服务端执行 \texttt{prisma.languageServerConfig.findMany()}，将返回的 \texttt{LanguageServerConfig} 列表传入 \texttt{ProblemEditor}，再下发到 \texttt{CoreEditor}\cite{prismadocs}。数据模型在 \texttt{schema.prisma} 中以语言为主键记录 \texttt{protocol}、\texttt{hostname}、\texttt{port} 与 \texttt{path} 等字段，使同一套前端代码可以在本地 Compose、内网部署或公网域名等不同环境下复用，只需调整种子数据或数据库配置即可。
 
-在浏览器侧，\path{src/components/core-editor.tsx} 根据当前语言选择匹配的 \texttt{LanguageServerConfig}，拼接出 \texttt{WebSocket} URL 并建立连接；连接建立后创建 \texttt{MonacoLanguageClient} 并启动，使 Monaco 与语言服务器进入同一套 LSP 会话。编辑器挂载完成后才发起连接，卸载时停止 client，避免页面切换造成资源泄漏。工具栏中的 \texttt{LSP} 状态指示（\path{lsp-connection-indicator.tsx}）通过观察 \texttt{WebSocket} 的就绪状态给出可视化反馈，让学生明确当前是否具备语言级诊断能力，这与仅依赖提交后判题反馈的体验有本质差异。
+在浏览器侧，\path{src/components/core-editor.tsx} 根据当前语言选择匹配的 \texttt{LanguageServerConfig}，拼接出 \texttt{WebSocket} URL 并建立连接；连接建立后创建 \texttt{MonacoLanguageClient} 并启动，使 Monaco 与语言服务器进入同一套 LSP 会话。编辑器挂载完成后才发起连接，卸载时停止 client，避免页面切换造成资源泄漏。工具栏中的 \texttt{LSP} 状态指示组件 \path{lsp-connection-indicator.tsx} 通过观察 \texttt{WebSocket} 的就绪状态给出可视化反馈，让学生明确当前是否具备语言级诊断能力，这与仅依赖提交后判题反馈的体验有本质差异。
 
 \noindent\textbf{第三，容器化语言服务与 Compose 编排。}语言服务器本身同样以容器方式运行，便于与主服务生命周期对齐。工程 \texttt{compose} 配置中除 \texttt{judge4c} 与 \texttt{postgres} 外，还包含 \texttt{lsp-c} 与 \texttt{lsp-cpp} 两个服务镜像。二者基于 \path{docker/lsp/clangd} 构建，在容器内通过 \texttt{jsonrpc-ws-proxy} 将 \texttt{WebSocket} JSON-RPC 转发到 \texttt{clangd} 进程，\texttt{servers.yml} 中声明 \texttt{/usr/bin/clangd} 及后台索引参数。主服务通过 \texttt{depends\_on} 等待语言服务健康检查通过后再启动，从而降低页面已打开但语言服务尚未就绪的偶发体验问题。该编排方式也与前文所述判题执行与辅助能力尽量容器化、可替换的总体思路一致\cite{dockerdocs,kubernetesdocs}。
 
@@ -576,7 +576,7 @@ AI 子系统的失败兜底策略可归纳为三层。第一层是\textbf{对判
   \label{fig:ch5-lsp-arch}
 \end{figure}
 
-\noindent\textbf{第四，与传统 OJ 编辑器的对比价值。}结合上述实现，平台在编码阶段能够提供的价值可以概括为三点。第一，\textbf{错误前移}，在提交前即可通过诊断标记暴露大量语法与类型问题，减少无意义提交。第二，\textbf{反馈可解释}，诊断与补全携带位置与符号信息，比单纯依赖编译器 stderr 更接近课堂讲解表达习惯。第三，\textbf{工程可运维}，语言服务与业务站点解耦，可按语言横向扩容或替换版本，而不必随每次业务发版耦合发布。对本科教学场景而言，这类能力并不替代判题主链路客观性，但能显著降低学生在模板代码附近卡住的概率，从而把更多认知资源留给算法与测试设计本身。
+\noindent\textbf{第四，与传统 OJ 编辑器的对比价值。}结合上述实现，平台在编码阶段能够提供三点价值：\textbf{错误前移}，在提交前即可通过诊断标记暴露大量语法与类型问题，减少无意义提交；\textbf{反馈可解释}，诊断与补全携带位置与符号信息，比单纯依赖编译器 stderr 更接近课堂讲解表达习惯；\textbf{工程可运维}，语言服务与业务站点解耦，可按语言横向扩容或替换版本，而不必随每次业务发版耦合发布。对本科教学场景而言，这类能力并不替代判题主链路客观性，但能显著降低学生在模板代码附近卡住的概率，从而把更多认知资源留给算法与测试设计本身。
 
 \noindent\textbf{第五，工具栏对编辑器与 AI 能力的统一收口。}上述 LSP 能力与第~\ref{sec:ch5-ai-sse}~节所述 AI 辅助能力最终都会汇聚到题目工作区上方的代码工具栏 \path{src/features/problems/code/components/toolbar/code-toolbar.tsx}。工具栏把语言切换、模板加载、\texttt{LSP} 状态指示灯、AI 相关按钮 \texttt{AnalyzeButton}、\texttt{OptimizeButton}、\texttt{ViewToggleButton} 与撤销、重做、格式化等基础编辑动作整合到同一行内，使学生在编码过程中无需离开视线焦点即可触发诊断、复杂度分析、优化建议与 Diff 对比等动作。表~\ref{tab:ch5-editor-toolbar} 汇总了工具栏中各能力的实现方式与教学作用，可与图~\ref{fig:problem-workspace} 所示界面对照查看。
 
@@ -600,7 +600,7 @@ AI 子系统的失败兜底策略可归纳为三层。第一层是\textbf{对判
 语言切换与模板加载 & 在工具栏切换语言并同步读取对应模板代码 & 方便同一道题在 C、C++ 等不同语言间切换，降低重复初始化成本。 \\
 语言服务状态提示 & 工具栏 \texttt{LSP} 指示灯随 \texttt{WebSocket} 状态变化 & 提示语言服务是否已连通，避免断链时误判为代码无错误。 \\
 诊断波浪线与问题列表 & \texttt{clangd} 经 LSP 推送诊断，Monaco 映射为标记 & 将拼写/语法/类型错误定位到行列，减少仅依赖编译日志时的定位成本。 \\
-补全与签名帮助 & LSP 标准能力（\texttt{completion}/\texttt{signatureHelp} 等） & 提供接近本地 IDE 的输入体验，降低模板附近 API 试错的摩擦。 \\
+补全与签名帮助 & LSP 标准能力，如 \texttt{completion}/\texttt{signatureHelp} 等 & 提供接近本地 IDE 的输入体验，降低模板附近 API 试错的摩擦。 \\
 复杂度分析 & 见第~\ref{sec:ch5-ai-sse}~节同步辅助小节，返回结构化时间/空间复杂度 & 帮助学生在提交前形成复杂度意识，及早发现低效实现。 \\
 代码优化建议 & 见第~\ref{sec:ch5-ai-sse}~节同步辅助小节，返回独立保存的优化版本 & 为学生提供可参考的改进版本，但不强制覆盖原代码。 \\
 Diff 对比视图 & 当 \texttt{optimizedCode} 非空时启用，在普通与 Diff 编辑器间切换 & 突出修改位置与改动性质，便于学习具体优化思路。 \\
@@ -657,9 +657,9 @@ Diff 对比视图 & 当 \texttt{optimizedCode} 非空时启用，在普通与 Di
 
 本节用于说明第五章实现结果与第四章设计目标之间的对应关系，明确已完成主链路与系统边界，避免将设计项与已实现功能混写。
 
-判题入口 \texttt{judge}（\path{src/app/actions/judge.ts}）在接收请求后先完成参数校验并创建状态为 \texttt{QD} 的提交记录，随后通过 \texttt{inngest.send} 投递事件；\path{src/inngest/functions/process-submission.ts} 订阅该事件并异步执行容器准备、编译与逐用例运行流程，底层执行由 \path{src/lib/judge-runtime.ts} 提供。该实现将请求受理与耗时执行解耦，前端可先获得已受理状态，再随着后台处理持续看到状态推进。
+判题入口 \texttt{judge} 位于 \path{src/app/actions/judge.ts}，在接收请求后先完成参数校验并创建状态为 \texttt{QD} 的提交记录，随后通过 \texttt{inngest.send} 投递事件；\path{src/inngest/functions/process-submission.ts} 订阅该事件并异步执行容器准备、编译与逐用例运行流程，底层执行由 \path{src/lib/judge-runtime.ts} 提供。该实现将请求受理与耗时执行解耦，前端可先获得已受理状态，再随着后台处理持续看到状态推进。
 
-与主判题不同，\texttt{CodeAnalysis} 使用独立状态枚举（如 \texttt{QUEUED}、\texttt{PROCESSING} 等），由 \texttt{analyzeCode} 在客观判题完成后异步触发，体现主结果确定、解释层后置的拆分方式。判题状态推送与语言服务同样基于 WebSocket 长连接，但二者在频道与事件语义上保持分离：前者通过 \texttt{problem-\{id\}} 与 \texttt{submission-\{id\}} 频道推送提交状态刷新，后者用于编辑期 LSP 会话。
+与主判题不同，\texttt{CodeAnalysis} 使用独立状态枚举，例如 \texttt{QUEUED}、\texttt{PROCESSING}，由 \texttt{analyzeCode} 在客观判题完成后异步触发，体现主结果确定、解释层后置的拆分方式。判题状态推送与语言服务同样基于 WebSocket 长连接，但二者在频道与事件语义上保持分离：前者通过 \texttt{problem-\{id\}} 与 \texttt{submission-\{id\}} 频道推送提交状态刷新，后者用于编辑期 LSP 会话。
 
 在课程化能力方面，本文已完成课程、选课关系、作业及作业题目关联等核心数据结构，并将作业上下文与提交记录建立关联。基于这一结构，教师端可进行课程维护、学生管理、作业创建与发布及统计查看，学生端也可在课程语境下进入作业并完成提交。总体而言，现有题库、提交、判题轨迹与 AI 分析已经形成可运行的数据闭环。
 
