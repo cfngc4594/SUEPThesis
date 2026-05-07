@@ -61,3 +61,9 @@ latexmk
 - [fduthesis（复旦大学论文模板）](https://github.com/stone-zeng/fduthesis)
 - [ThuThesis（清华大学论文模板）](https://github.com/tuna/thuthesis)
 - [BIThesis （北京理工大学论文模板）](https://github.com/BITNP/BIThesis)
+
+## 启动
+
+```bash
+cd /Users/kali/SUEP/thesis; with-env { PAR_GLOBAL_TEMP: $"/tmp/par-($env.USER)" } { latexmk -C; latexmk -xelatex -shell-escape -interaction=nonstopmode -file-line-error main.tex }
+```
