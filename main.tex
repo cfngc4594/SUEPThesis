@@ -34,6 +34,12 @@
 \usepackage{booktabs}
 \usepackage{multirow}
 \usepackage{dcolumn}
+\usepackage{placeins}
+\usepackage{etoolbox}
+\preto{\subsection}{\FloatBarrier}
+\usepackage{ragged2e}
+\usepackage{xltabular}
+\keepXColumns
 \newcolumntype{d}[1]{D{.}{.}{#1}}
 \newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
 \usepackage{longtable}
@@ -47,6 +53,7 @@
 \usepackage{hologo}
 \usepackage{minted}
 \usepackage{verbatim}
+\usepackage{xurl}
 \providecommand{\dd}{\mathop{}\!\mathrm{d}}
 \providecommand{\ee}{\mathrm{e}}
 \providecommand{\ii}{\mathrm{i}}

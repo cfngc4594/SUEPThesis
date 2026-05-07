@@ -10,8 +10,8 @@
 \small
 \setlength{\LTleft}{\fill}
 \setlength{\LTright}{\fill}
-\setlength{\tabcolsep}{3pt}
-\begin{longtable}{P{0.18\textwidth}P{0.72\textwidth}}
+\setlength{\tabcolsep}{2pt}
+\begin{xltabular}{\textwidth}{P{0.20\textwidth}>{\RaggedRight\arraybackslash}X}
 \caption{测试环境配置}\\
 \toprule
 \textbf{项目} & \textbf{配置} \\
@@ -35,7 +35,7 @@ ORM / Prisma 版本 & Prisma 6.7.0 \\
 AI 服务 & DeepSeek，通过 @ai-sdk/openai-compatible 接入 \\
 浏览器 & Google Chrome \\
 \bottomrule
-\end{longtable}
+\end{xltabular}
 \endgroup
 
 表里这些环境参数都来自本次项目的实际测试环境，覆盖了本机运行时版本和关键依赖配置。把这些信息明确写出来，主要是为了让论文描述和演示环境能够一一对应，也方便他人在复核时做差异排查。
@@ -65,8 +65,16 @@ AI 服务 & DeepSeek，通过 @ai-sdk/openai-compatible 接入 \\
 \small
 \setlength{\LTleft}{\fill}
 \setlength{\LTright}{\fill}
-\setlength{\tabcolsep}{3pt}
-\begin{longtable}{P{0.07\textwidth}P{0.11\textwidth}P{0.15\textwidth}P{0.14\textwidth}P{0.14\textwidth}P{0.13\textwidth}P{0.09\textwidth}}
+\setlength{\tabcolsep}{2pt}
+\begin{xltabular}{\textwidth}{
+P{0.07\textwidth}
+P{0.11\textwidth}
+>{\hsize=1.00\hsize\RaggedRight\arraybackslash}X
+>{\hsize=1.10\hsize\RaggedRight\arraybackslash}X
+>{\hsize=1.00\hsize\RaggedRight\arraybackslash}X
+>{\hsize=1.00\hsize\RaggedRight\arraybackslash}X
+>{\hsize=0.90\hsize\RaggedRight\arraybackslash}X
+}
 \caption{功能测试用例与结果}\\
 \toprule
 \textbf{编号} & \textbf{测试项} & \textbf{前置条件} & \textbf{测试步骤} & \textbf{预期结果} & \textbf{实际结果} & \textbf{备注} \\
@@ -87,12 +95,12 @@ F-05 & 代码提交 & 用户已登录且题目可访问 & 输入代码并点击�
 F-06 & 提交记录查看 & 至少已完成一次代码提交 & 打开提交记录面板或提交详情面板 & 可查看提交时间、状态与部分详情信息 & 通过，可查看 AC、CE、WA、RE、TLE 等多种状态记录 & 见图~\ref{fig:ch5-submission-list} \\
 F-07 & AI 辅助反馈展示 & 提交已触发 AI 分析且分析完成 & 打开 AI 面板或提交详情中的分析区域 & 可查看复杂度、评分和反馈文本 & 通过，可正常展示雷达图、总分、复杂度与反馈文本 & 见图~\ref{fig:ch5-ai-feedback}、图~\ref{fig:ch6-ai-wa} 及图~\ref{fig:ch6-ai-readability} \\
 F-08 & 题库管理页访问 & 管理员账号可正常登录 & 访问后台题库管理页面 & 题目管理列表可正常展示 & 通过，后台题目列表与操作按钮可正常显示 & 见图~\ref{fig:ch5-problem-admin} \\
-F-09 & 语言服务连通与诊断 & 本地 Compose 已启动 \texttt{lsp-c}/\texttt{lsp-cpp} 且健康检查通过 & 打开题目页，观察工具栏 LSP 状态；在编辑器中引入明显语法/类型错误 & 状态指示进入就绪态，错误处出现诊断标记并可随修改更新 & 通过，行为与第五章图~\ref{fig:ch5-lsp-arch} 所述链路一致，界面级证据见图~\ref{fig:ch6-lsp} \\
+F-09 & 语言服务连通与诊断 & 本地 Compose 已启动 \texttt{lsp-c}\allowbreak/\allowbreak\texttt{lsp-cpp} 且健康检查通过 & 打开题目页，观察工具栏 LSP 状态；在编辑器中引入明显语法/类型错误 & 状态指示进入就绪态，错误处出现诊断标记并可随修改更新 & 通过，行为与第五章图~\ref{fig:ch5-lsp-arch} 所述链路一致，界面级证据见图~\ref{fig:ch6-lsp} \\
 F-10 & AI 聊天 SSE 流式响应 & 已配置 \texttt{AI\_API\_KEY}、\allowbreak\texttt{AI\_BASE\_URL}、\allowbreak\texttt{AI\_MODEL} 三项环境变量 & 打开题目页 Bot 面板提交一条问题，同时在 Network 面板观察 \texttt{/api/chat} 请求 & 响应在生成途中即开始向页面增量写入文本，请求保持 pending 直至流结束，与图~\ref{fig:ch5-ai-sse-seq} 时序一致 & 通过，回复呈现逐段浮现的形态而非整段一次性出现 \\
 F-11 & 教师课程管理 & 教师账号可正常登录且具备课程管理权限 & 进入教师端课程页面，执行课程创建、学生加入与课程详情查看 & 可完成课程创建与成员维护，课程信息正常持久化并可回显 & 通过，课程列表、成员信息与详情页均可正常显示 & 见图~\ref{fig:ch5-course-page} \\
 F-12 & 作业创建与发布 & 课程已创建且题库中存在可用题目 & 在课程下创建作业、关联题目并切换发布状态；学生端进入课程查看作业列表 & 教师端可完成作业创建/发布，学生端可看到可访问作业并提交 & 通过，作业发布后学生端可进入对应作业并完成提交 & 见图~\ref{fig:ch5-assignment-page} \\
 \bottomrule
-\end{longtable}
+\end{xltabular}
 \endgroup
 
 \begin{figure}[htbp]
@@ -114,8 +122,16 @@ F-12 & 作业创建与发布 & 课程已创建且题库中存在可用题目 & �
 \small
 \setlength{\LTleft}{\fill}
 \setlength{\LTright}{\fill}
-\setlength{\tabcolsep}{3pt}
-\begin{longtable}{P{0.07\textwidth}P{0.10\textwidth}P{0.17\textwidth}P{0.10\textwidth}P{0.11\textwidth}P{0.09\textwidth}P{0.16\textwidth}}
+\setlength{\tabcolsep}{2pt}
+\begin{xltabular}{\textwidth}{
+P{0.07\textwidth}
+P{0.10\textwidth}
+>{\hsize=1.20\hsize\RaggedRight\arraybackslash}X
+P{0.10\textwidth}
+P{0.11\textwidth}
+P{0.09\textwidth}
+>{\hsize=1.10\hsize\RaggedRight\arraybackslash}X
+}
 \caption{判题正确性测试结果}\label{tab:ch6-judge-correctness}\\
 \toprule
 \textbf{编号} & \textbf{测试类型} & \textbf{输入代码特征} & \textbf{预期状态} & \textbf{实际状态} & \textbf{是否通过} & \textbf{备注} \\
@@ -134,15 +150,21 @@ J-03 & 答案错误程序 & 可编译运行但输出与标准答案不一致 & W
 J-04 & 运行错误程序 & 程序运行过程中异常退出 & RE & RE & 通过 & 使用 \texttt{abort()} 样例可稳定复现运行时错误，见图~\ref{fig:ch5-submission-list} \\
 J-05 & 时间超限程序 & 程序进入死循环或长期无响应 & TLE & TLE & 通过 & 系统能够对死循环样例触发时间限制控制，见图~\ref{fig:ch5-submission-list} \\
 \bottomrule
-\end{longtable}
+\end{xltabular}
 \endgroup
 
 \begingroup
 \small
 \setlength{\LTleft}{\fill}
 \setlength{\LTright}{\fill}
-\setlength{\tabcolsep}{3pt}
-\begin{longtable}{P{0.07\textwidth}P{0.11\textwidth}P{0.18\textwidth}P{0.20\textwidth}P{0.25\textwidth}}
+\setlength{\tabcolsep}{2pt}
+\begin{xltabular}{\textwidth}{
+P{0.07\textwidth}
+P{0.11\textwidth}
+>{\hsize=1.00\hsize\RaggedRight\arraybackslash}X
+>{\hsize=1.10\hsize\RaggedRight\arraybackslash}X
+>{\hsize=1.20\hsize\RaggedRight\arraybackslash}X
+}
 \caption{不同错误类型样例与系统返回状态}\label{tab:ch6-error-samples}\\
 \toprule
 \textbf{编号} & \textbf{错误类型} & \textbf{构造方式} & \textbf{页面表现} & \textbf{结果说明} \\
@@ -160,7 +182,7 @@ E-02 & 答案错误 & 返回固定错误答案或忽略关键分支条件 & 系�
 E-03 & 运行错误 & 通过 abort()、非法访问或异常退出构造运行期故障 & 系统返回 Runtime Error & 可说明平台能够识别程序运行期异常 \\
 E-04 & 时间超限 & 在核心函数中构造 while (1) \{\} 死循环 & 系统返回 Time Limit Exceeded & 可说明平台具备时间限制控制能力 \\
 \bottomrule
-\end{longtable}
+\end{xltabular}
 \endgroup
 
 判题正确性是本平台最核心的验证内容。实际测试表明，平台在接收到提交后，能够依次完成前置校验、编译、运行和结果判定，并对 \texttt{AC}、\texttt{CE}、\texttt{WA}、\texttt{RE} 和 \texttt{TLE} 等核心状态给出与预期一致的返回结果。这说明系统已具备基本可靠的判题能力。针对容器清理、远程 Docker 连接与输出截断阈值等边界条件，本文在异常路径中给出状态回写与日志追踪策略\cite{alemu2023serverless,kubernetesdocs}。
@@ -173,8 +195,14 @@ E-04 & 时间超限 & 在核心函数中构造 while (1) \{\} 死循环 & 系统
 \small
 \setlength{\LTleft}{\fill}
 \setlength{\LTright}{\fill}
-\setlength{\tabcolsep}{3pt}
-\begin{longtable}{P{0.08\textwidth}P{0.16\textwidth}P{0.20\textwidth}P{0.14\textwidth}P{0.30\textwidth}}
+\setlength{\tabcolsep}{2pt}
+\begin{xltabular}{\textwidth}{
+P{0.08\textwidth}
+P{0.16\textwidth}
+>{\hsize=1.00\hsize\RaggedRight\arraybackslash}X
+P{0.14\textwidth}
+>{\hsize=1.30\hsize\RaggedRight\arraybackslash}X
+}
 \caption{恶意代码防护验证结果}\label{tab:ch6-security-cases}\\
 \toprule
 \textbf{编号} & \textbf{攻击场景} & \textbf{样例行为} & \textbf{实际状态} & \textbf{验证结论} \\
@@ -191,7 +219,7 @@ S-01 & 进程滥用 & 在无限循环中持续 \texttt{fork()} 创建子进程 &
 S-02 & 内存滥用 & 持续申请并写入大块内存，超过题目内存上限 & MLE & 内存约束生效，系统返回内存超限状态，未出现宿主机级别失控。 \\
 S-03 & 网络外联 & 在容器内主动发起 socket 连接公网地址 & RE & 默认网络隔离生效，外联请求失败，无法访问外部网络资源。 \\
 \bottomrule
-\end{longtable}
+\end{xltabular}
 \endgroup
 
 上述结果表明，平台当前的判题沙箱不仅能够处理普通错误类型，也能对高风险样例形成有效约束。对应样例代码见附录中的恶意代码样例，便于复核与复现实验。
@@ -231,8 +259,15 @@ AI 辅助反馈效果分析选择了若干具有代表性的提交样例，例�
 \small
 \setlength{\LTleft}{\fill}
 \setlength{\LTright}{\fill}
-\setlength{\tabcolsep}{3pt}
-\begin{longtable}{P{0.07\textwidth}P{0.13\textwidth}P{0.16\textwidth}P{0.17\textwidth}P{0.16\textwidth}P{0.12\textwidth}}
+\setlength{\tabcolsep}{2pt}
+\begin{xltabular}{\textwidth}{
+P{0.07\textwidth}
+P{0.13\textwidth}
+>{\hsize=1.00\hsize\RaggedRight\arraybackslash}X
+>{\hsize=1.10\hsize\RaggedRight\arraybackslash}X
+>{\hsize=1.00\hsize\RaggedRight\arraybackslash}X
+>{\hsize=0.90\hsize\RaggedRight\arraybackslash}X
+}
 \caption{AI 辅助反馈效果示例}\label{tab:ch6-ai-feedback-cases}\\
 \toprule
 \textbf{编号} & \textbf{提交场景} & \textbf{AI 输出重点} & \textbf{预期评价维度} & \textbf{实际情况} & \textbf{展示价值} \\
@@ -250,7 +285,7 @@ A-02 & 答案错误代码 & 逻辑问题提示、边界条件提醒、思路偏�
 A-03 & 低效正确代码 & 时间复杂度、空间复杂度、优化建议 & 反馈是否能够识别复杂度并给出合理优化方向 & 已识别时间复杂度为 \(O(N^2)\)、空间复杂度为 \(O(1)\)，并建议使用哈希表优化到线性时间 & 可用，见图~\ref{fig:ch5-ai-feedback}，适合体现 AI 的学习支持价值 \\
 A-04 & 可读性较差代码 & 命名、结构、可读性与代码风格建议 & 反馈是否能够从结构化角度提出改进意见 & 已指出单行过密、单字母变量、缺少空格和命名不清等问题，并给出代码风格 30 分、可读性 35 分的评价 & 可用，见图~\ref{fig:ch6-ai-readability}，可用于展示 AI 对代码可读性问题的识别能力 \\
 \bottomrule
-\end{longtable}
+\end{xltabular}
 \endgroup
 
 \begin{figure}[htbp]
@@ -277,8 +312,14 @@ AI 辅助反馈部分作为客观判题之后的附加分析存在。从样例�
 \small
 \setlength{\LTleft}{\fill}
 \setlength{\LTright}{\fill}
-\setlength{\tabcolsep}{3pt}
-\begin{longtable}{P{0.07\textwidth}P{0.16\textwidth}P{0.12\textwidth}P{0.37\textwidth}P{0.16\textwidth}}
+\setlength{\tabcolsep}{2pt}
+\begin{xltabular}{\textwidth}{
+P{0.07\textwidth}
+P{0.16\textwidth}
+P{0.12\textwidth}
+>{\hsize=1.20\hsize\RaggedRight\arraybackslash}X
+>{\hsize=0.90\hsize\RaggedRight\arraybackslash}X
+}
 \caption{界面与交互能力测试结果}\label{tab:ch6-interaction}\\
 \toprule
 \textbf{编号} & \textbf{测试项} & \textbf{实际结果} & \textbf{结果说明} & \textbf{截图对应} \\
@@ -298,7 +339,7 @@ I-04 & 编辑器 AI 工具栏 & 通过 & 优化代码后可切换到 Diff 视图
 I-05 & 机器人问答面板 & 通过 & AI 助手能够结合当前代码回答复杂度问题，回答内容与当前任务上下文一致。 & 图~\ref{fig:ai-chat-panel} \\
 I-06 & 语言服务 LSP 体验 & 通过 & 工具栏可观察连接状态；在 Clangd 就绪条件下，故意错误可触发编辑器诊断标记，减少仅依赖提交后 \texttt{CE} 信息的定位成本。 & 图~\ref{fig:ch6-lsp} \\
 \bottomrule
-\end{longtable}
+\end{xltabular}
 \endgroup
 
 \begin{figure}[htbp]

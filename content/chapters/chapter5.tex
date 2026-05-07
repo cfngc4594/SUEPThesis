@@ -24,7 +24,11 @@
 \setlength{\LTleft}{\fill}
 \setlength{\LTright}{\fill}
 \setlength{\tabcolsep}{3pt}
-\begin{longtable}{P{0.20\textwidth}P{0.20\textwidth}P{0.48\textwidth}}
+\begin{xltabular}{\textwidth}{
+  P{0.20\textwidth}
+  >{\hsize=0.72\hsize\RaggedRight\arraybackslash\ttfamily\small}X
+  >{\hsize=1.28\hsize\RaggedRight\arraybackslash}X
+}
 \caption{核心实现模块与职责对应关系}\\
 \toprule
 \textbf{实现模块} & \textbf{主要位置} & \textbf{核心职责} \\
@@ -37,16 +41,16 @@
 \endhead
 \bottomrule
 \endfoot
-提交与判题入口 & \texttt{judge.ts} & 完成身份校验、题目与测试用例存在性校验、Docker 配置校验、Submission 创建，并通过 \texttt{inngest.send} 投递异步判题事件。 \\
-容器运行时工具 & \texttt{docker.ts} & 负责本地或远程 Docker 客户端初始化、镜像可用性检查、判题容器创建、提交代码打包上传以及输出流长度控制。 \\
-编译执行模块 & \texttt{compile.ts} & 根据语言生成编译命令，更新提交状态，截断过长编译输出，并把编译结果回写数据库。 \\
-运行判题模块 & \path{process-submission.ts} 与 \path{judge-runtime.ts} & 负责逐用例执行、标准输入拼接、输出比对、时间与内存统计、短路终止以及 JudgeRun 落库。 \\
-AI 分析模块 & \texttt{analyze-code.ts} & 在判题主链路外异步创建 CodeAnalysis 记录，调用大模型生成结构化反馈，并维护分析状态流转。 \\
-题目读取模块 & \texttt{getProblem.ts} & 聚合题目基本信息、模板代码、测试用例和本地化内容，并将题面描述序列化为可直接渲染的 MDX 数据。 \\
-编辑器状态模块 & \path{problem-editor.ts} & 维护当前题目的语言选择、草稿代码、编辑器路径、差异视图状态与本地持久化逻辑。 \\
-工作区布局模块 & \texttt{flexlayout.ts} & 管理题目求解工作区的初始布局与本地持久化，使用户可以在统一界面内组织题面、代码、提交和测试面板。 \\
+提交与判题入口 & judge.ts & 完成身份校验、题目与测试用例存在性校验、Docker 配置校验、Submission 创建，并通过 \texttt{inngest.send} 投递异步判题事件。 \\
+容器运行时工具 & docker.ts & 负责本地或远程 Docker 客户端初始化、镜像可用性检查、判题容器创建、提交代码打包上传以及输出流长度控制。 \\
+编译执行模块 & compile.ts & 根据语言生成编译命令，更新提交状态，截断过长编译输出，并把编译结果回写数据库。 \\
+运行判题模块 & process-submission.ts / judge-runtime.ts & 负责逐用例执行、标准输入拼接、输出比对、时间与内存统计、短路终止以及 JudgeRun 落库。 \\
+AI 分析模块 & analyze-code.ts & 在判题主链路外异步创建 CodeAnalysis 记录，调用大模型生成结构化反馈，并维护分析状态流转。 \\
+题目读取模块 & getProblem.ts & 聚合题目基本信息、模板代码、测试用例和本地化内容，并将题面描述序列化为可直接渲染的 MDX 数据。 \\
+编辑器状态模块 & problem-editor.ts & 维护当前题目的语言选择、草稿代码、编辑器路径、差异视图状态与本地持久化逻辑。 \\
+工作区布局模块 & flexlayout.ts & 管理题目求解工作区的初始布局与本地持久化，使用户可以在统一界面内组织题面、代码、提交和测试面板。 \\
 \bottomrule
-\end{longtable}
+\end{xltabular}
 \endgroup
 
 从实现组织方式上看，当前项目虽然没有完全拆成独立微服务仓库，但已经在代码职责上形成了较清晰的分工。对本科毕设原型而言，这种方式是合适的，既能在单仓内快速完成功能闭环，也能保持模块边界清晰。
@@ -608,7 +612,7 @@ AI 子系统的失败兜底策略可归纳为三层。\textbf{对判题主链路
 语言切换与模板加载 & 在工具栏切换语言并同步读取对应模板代码 & 方便同一道题在 C、C++ 等不同语言间切换，降低重复初始化成本。 \\
 语言服务状态提示 & 工具栏 \texttt{LSP} 指示灯随 \texttt{WebSocket} 状态变化 & 提示语言服务是否已连通，避免断链时误判为代码无错误。 \\
 诊断波浪线与问题列表 & \texttt{clangd} 经 LSP 推送诊断，Monaco 映射为标记 & 在编辑阶段就能把拼写、语法、类型问题定位到具体行列，减少只能依赖编译日志排错带来的成本。 \\
-补全与签名帮助 & LSP 标准能力，如 \texttt{completion}/\texttt{signatureHelp} 等 & 提供接近本地 IDE 的输入体验，降低模板附近 API 试错的摩擦。 \\
+补全与签名帮助 & LSP 标准能力，如 \texttt{completion}\allowbreak/\allowbreak\texttt{signatureHelp} 等 & 提供接近本地 IDE 的输入体验，降低模板附近 API 试错的摩擦。 \\
 复杂度分析 & 见第~\ref{sec:ch5-ai-sse}~节同步辅助小节，返回结构化时间/空间复杂度 & 帮助学生在提交前形成复杂度意识，及早发现低效实现。 \\
 代码优化建议 & 见第~\ref{sec:ch5-ai-sse}~节同步辅助小节，返回独立保存的优化版本 & 为学生提供可参考的改进版本，但不强制覆盖原代码。 \\
 Diff 对比视图 & 当 \texttt{optimizedCode} 非空时启用，在普通与 Diff 编辑器间切换 & 突出修改位置与改动性质，便于学习具体优化思路。 \\
