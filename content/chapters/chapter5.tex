@@ -376,7 +376,7 @@ AI 辅助子系统并非主判题链路的一部分，而是围绕客观判题�
 
 \noindent\textbf{服务端流式返回。}\path{src/app/api/chat/route.ts} 是整个聊天能力的入口，其本体非常精简：在 \texttt{POST} 处理函数内解析请求体中的对话历史 \texttt{messages}，以预设角色与行为约束作为 \texttt{system} 提示词，调用 SDK 的 \texttt{streamText} 取得流式响应对象，再经 \texttt{toDataStreamResponse} 封装为 Web \texttt{Response} 直接返回。与此同时通过 \texttt{maxDuration = 30} 向 Next.js 声明该 Route Handler 的时长上限，用于配合无服务器部署平台对长连接的处理\cite{nextjsdocs}。
 
-这一精简实现涉及三个关键 API。 \texttt{streamText} 通过 OpenAI 兼容 Provider 向远端模型发起 \texttt{stream:true} 的 Chat Completions 请求，返回一个包装后的流对象；\texttt{toDataStreamResponse} 把该流封装为符合 Vercel AI SDK Data Stream Protocol 的 Web \texttt{Response}\cite{aisdk2024docs}；\texttt{maxDuration} 则以代码声明方式绑定单条长连接的部署级时长约束，便于迁移时同步迁出\cite{nextjsdocs}。
+这一精简实现涉及三个关键 API：\texttt{streamText} 通过 OpenAI 兼容 Provider 向远端模型发起 \texttt{stream:true} 的 Chat Completions 请求，返回一个包装后的流对象；\texttt{toDataStreamResponse} 把该流封装为符合 Vercel AI SDK Data Stream Protocol 的 Web \texttt{Response}\cite{aisdk2024docs}；\texttt{maxDuration} 则以代码声明方式绑定单条长连接的部署级时长约束，便于迁移时同步迁出\cite{nextjsdocs}。
 
 需要严谨说明的是，本文所称的 SSE 风格流式响应在协议层与传统 \texttt{text/event-stream} 标准 SSE 并不完全等同：标准 SSE 由 WHATWG 在 HTML 规范中定义，要求响应 \texttt{Content-Type: text/event-stream}、按 \texttt{event:}/\texttt{data:} 行格式封装，并由浏览器原生 \texttt{EventSource} 接口解析\cite{whatwgeventsource,rfc8895eventsource}。Vercel AI SDK 的 Data Stream Protocol 借鉴了相同的一行一事件、按行解析的思想，但出于可携带二进制安全字符串、支持 POST 请求体以及兼容流式 fetch 的考虑，使用 \texttt{Content-Type: text/plain; charset=utf-8} 与自定义前缀字符，例如 \texttt{0:}、\texttt{2:}、\texttt{e:}、\texttt{f:}，区分文本块、工具调用、错误与完成等帧类型，并依靠 HTTP/1.1 chunked transfer encoding 实现分块推送\cite{aisdk2024docs,rfc7230chunked}。两者的共同特征都是在单条长连接上把一次响应拆为多次增量帧，因此在工程语境下统称为 SSE 风格的增量流式响应是合适的；但读者应注意它并非通过浏览器 \texttt{EventSource} 接口消费，而是由 SDK 在 fetch 之上自行解析。
 
@@ -463,7 +463,7 @@ AI 辅助子系统并非主判题链路的一部分，而是围绕客观判题�
 
 \subsection{故障兜底与教学边界}
 
-AI 子系统的失败兜底策略可归纳为三层。\textbf{对判题主链路无影响}：所有 AI 调用都以 Server Action 或独立 Route Handler 形式存在，不在 \texttt{judge.ts} 主链路上同步等待，因而即使模型不可达、配额耗尽或返回格式错误，学生仍能完成提交并获得标准 \texttt{AC}/\texttt{WA}/\texttt{TLE} 等结果。\textbf{结构化字段降级}：在 \texttt{analyze-code.ts} 中所有 zod 字段均为 \texttt{optional}，若模型返回缺少某些维度，最终表现只是部分字段为空，而不是整条记录写入失败，前端只需对空值显示占位即可，不影响其他字段渲染。\textbf{状态可观测}：所有失败分支都把状态写为 \texttt{FAILED} 并保留时间戳，配合后台日志可以快速判断问题位于模型调用前、模型超时，还是工具回调内 SQL 写入失败。
+AI 子系统的失败兜底策略可归纳为三层：\textbf{对判题主链路无影响}：所有 AI 调用都以 Server Action 或独立 Route Handler 形式存在，不在 \texttt{judge.ts} 主链路上同步等待，因而即使模型不可达、配额耗尽或返回格式错误，学生仍能完成提交并获得标准 \texttt{AC}/\texttt{WA}/\texttt{TLE} 等结果。\textbf{结构化字段降级}：在 \texttt{analyze-code.ts} 中所有 zod 字段均为 \texttt{optional}，若模型返回缺少某些维度，最终表现只是部分字段为空，而不是整条记录写入失败，前端只需对空值显示占位即可，不影响其他字段渲染。\textbf{状态可观测}：所有失败分支都把状态写为 \texttt{FAILED} 并保留时间戳，配合后台日志可以快速判断问题位于模型调用前、模型超时，还是工具回调内 SQL 写入失败。
 
 教学边界方面，本子系统遵守第三章给出的 AI 可控性原则：聊天面板的 system prompt 强调要用用户语言回复并保持简洁，而非直接给出完整答案；优化代码不会覆盖原代码，且需用户主动按按钮才会触发；分析结果与客观判题状态分离存储，从数据模型层面阻断了 AI 评分污染判题结果的可能。这些工程化处理使 AI 在系统中始终扮演解释与提示的角色，而非充当裁判。
 
@@ -531,7 +531,7 @@ AI 子系统的失败兜底策略可归纳为三层。\textbf{对判题主链路
 
 \subsection{国际化、多语言与主题一致性}
 
-平台的多语言能力由数据层与界面层共同构成。数据层借助 \texttt{ProblemLocalization} 按 \texttt{locale} 组织题目标题、题面描述与题解说明，使同一道题目在不同语言下呈现一致的题面结构；界面层则需要系统化的国际化 i18n 组织来承载导航、按钮、错误提示、判题状态解释、AI 面板标题等高频文本，否则会出现题面是英文但按钮仍是中文这一类割裂体验。
+平台的多语言能力由数据层与界面层共同构成，数据层借助 \texttt{ProblemLocalization} 按 \texttt{locale} 组织题目标题、题面描述与题解说明，使同一道题目在不同语言下呈现一致的题面结构；界面层则需要系统化的国际化 i18n 组织来承载导航、按钮、错误提示、判题状态解释、AI 面板标题等高频文本，否则会出现题面是英文但按钮仍是中文这一类割裂体验。
 
 界面 i18n 工程实现采用 \texttt{next-intl} 与 Next.js App Router 结合：服务端组件通过 \texttt{getTranslations}/\texttt{getLocale} 读取当前语言环境下的文案，客户端组件通过 \texttt{useTranslations}/\texttt{useLocale} 绑定交互控件标签；语言偏好通过 Cookie 在请求之间保持，使刷新与导航后仍能获得一致的语言上下文\cite{nextjsdocs}。翻译资源以消息字典形式按命名空间集中维护，页面与组件只引用键路径而不硬编码长字符串。新增页面时可借助键缺失检测尽早发现漏翻译；若课程方需要调整术语例如将提交统一改为评测提交，只需改字典而无需在大量组件中全文搜索替换；服务端渲染路径与客户端 hydration 路径读取同一套消息源，可以减少首屏与二次渲染之间的语言不一致问题。
 
