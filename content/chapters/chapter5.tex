@@ -666,9 +666,9 @@ Diff 对比视图 & 当 \texttt{optimizedCode} 非空时启用，在普通与 Di
 
 本地端到端构建验证结果如下：\texttt{docker compose -f compose.local.yml up -d} 启动后 \texttt{postgres}、\texttt{redis}、\texttt{inngest}、\texttt{soketi} 与主服务均进入可用状态，\texttt{bun install} 完成依赖安装并触发 Prisma Client 生成，\texttt{bunx prisma migrate deploy} 应用全部 15 个数据库迁移，\texttt{bunx prisma db seed} 完成种子数据初始化，\texttt{bun run build} 生产构建通过，构建输出中可见 \path{/problemset}、\path{/problems/[problemId]}、\path{/dashboard} 以及后台管理相关核心路由均已参与构建。图~\ref{fig:local-dev-env} 给出了运行界面与开发终端状态，可作为本地演示环境正常工作的证据。
 
-\section{实现边界说明}
+\section{关键实现结果汇总}
 
-本节用于说明第五章实现结果与第四章设计目标之间的对应关系，明确已完成核心流程与系统边界，避免将设计项与已实现功能混写。
+本节对第五章已实现的关键功能进行集中汇总，便于与前文流程描述和后文测试结果对应阅读。
 
 判题入口 \texttt{judge} 位于 \path{src/app/actions/judge.ts}，在接收请求后先完成参数校验并创建状态为 \texttt{QD} 的提交记录，随后通过 \texttt{inngest.send} 投递事件，\path{src/inngest/functions/process-submission.ts} 订阅该事件并异步执行容器准备、编译与逐用例运行流程，底层执行由 \path{src/lib/judge-runtime.ts} 提供。该实现将请求受理与耗时执行解耦，前端可先获得已受理状态，再随着后台处理持续看到状态推进。
 
