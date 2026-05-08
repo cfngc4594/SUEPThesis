@@ -147,11 +147,9 @@ SE & System Error & 系统环境、配置或流程执行出现异常，例如题
 \end{longtable}
 \endgroup
 
-Submission 表存储了语言类型、源代码、最终判题状态、错误信息、时间使用量、内存使用量等内容。Testcase 与 TestcaseInput 表存储了一道题目的所有测试用例，Judge 与 JudgeRun 表分别保存了每次提交的判题轨迹和每个测试用例的执行结果。
+Submission 表存了语言类型、源代码、最终判题状态、报错信息、用了多少时间、占了多少内存这些内容。Testcase 和 TestcaseInput 表存着一道题所有的测试用例，Judge 跟 JudgeRun 表则分别记录了每次提交的判题过程，还有每个测试用例最后跑出来的结果。
 
-之所以需要拆分为 Submission、Judge、JudgeRun 三层，是为了让提交级状态与用例级细节解耦，这样就可以在列表页展示摘要并在详情页展示具体导致判题失败的测试用例。
-
-CodeAnalysis 表用于保存 AI 辅助分析结果，它通过 submissionId 与 Submission 建立一对一关系，并使用独立状态字段跟踪分析任务的处理阶段。由此，AI 分析既可以异步运行而不阻塞主判题流程，也可以与判题结果分离存储。
+要拆成 Submission、Judge、JudgeRun 这三层，是为了把提交整体的状态，和单个测试用例的细节分开互不影响，这样就能在列表页先展示提交的概况，点进详情页再看具体是哪个测试用例让判题不通过。CodeAnalysis 表是用来存 AI 辅助分析的结果的，它靠 submissionId 和 Submission 表建立一对一的关联，还用单独的状态字段追踪分析任务现在走到哪个阶段了，这样一来，AI 分析就能放在后台异步跑，不会卡住主判题的流程，分析结果也能和判题结果分开存在不同的表里。
 
 \begingroup
 \small
