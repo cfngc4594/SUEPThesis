@@ -169,11 +169,11 @@ Submission 表存了语言类型、源代码、最终判题状态、报错信息
 \endhead
 \bottomrule
 \endfoot
-ProblemLocalization & \texttt{problemId + locale + type} 复合主键 & 保证同一道题目的同一种内容类型在同一种语言下只有唯一版本，避免题面与题解文本冲突。 \\
-Template & \texttt{problemId + language} 复合主键 & 保证每道题在每种语言下只有一份模板代码，便于前端切换语言时直接加载对应初始代码。 \\
-CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应一条主分析记录，避免多次分析结果互相覆盖或重复展示。 \\
-外键级联删除 & 多个实体对 Problem、Submission 的级联关系 & 题目或提交删除后，关联的本地化文本、模板、判题轨迹和分析记录都会随之清理，可减少孤立数据残留。 \\
-提交与用例分层记录 & Submission、Judge、JudgeRun 分层设计 & 既保存提交级摘要，又保留用例级细节，为详情展示、错误复盘和统计提供更细粒度的数据基础。 \\
+ProblemLocalization & \texttt{problemId + locale + type} 复合主键 & 能保证同一道题的同一种内容类型，在同一种语言下只会有唯一版本，避免题面和题解的文本出现冲突。 \\
+Template & \texttt{problemId + language} 复合主键 & 能保证每道题目在每种语言下都只存一份模板代码，方便前端切换语言的时候，直接加载对应的初始代码。 \\
+CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应一条主分析记录，不会出现多次分析结果互相覆盖、或者重复展示的问题。 \\
+外键级联删除 & 多个实体对 Problem、Submission 的级联关系 & 理清多个实体对 Problem、Submission 的级联关系，当题目或者提交被删除之后，关联的本地化文本、模板、判题轨迹还有分析记录都会跟着被清理，能减少没用的孤立数据残留下来。 \\
+提交和用例分层记录 & Submission、Judge、JudgeRun 分层设计 & 既保存了提交级的摘要信息，又保留了用例级的细节内容，可以给详情展示、错误复盘还有统计工作提供粒度更细的数据基础。 \\
 \bottomrule
 \end{longtable}
 \endgroup
