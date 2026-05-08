@@ -4,9 +4,9 @@
   layer/.style={draw, minimum width=7.2cm, minimum height=1.0cm, align=left, inner xsep=8pt},
   arr/.style={-{Stealth}, thick}
 ]
-  \node[layer, fill=gray!15] (L1) {\textbf{L1 客观层}：测试用例判定（AC/WA/CE/RE/TLE 等）};
-  \node[layer, fill=blue!8, below=0.45cm of L1] (L2) {\textbf{L2 诊断层}：编译器/运行时错误摘要、逐用例输出片段};
-  \node[layer, fill=purple!10, below=0.45cm of L2] (L3) {\textbf{L3 形成性层}：复杂度、风格、优化建议、上下文问答（概率输出）};
+  \node[layer, fill=gray!15] (L1) {L1 客观层：测试用例判定（AC/WA/CE/RE/TLE 等）};
+  \node[layer, fill=blue!8, below=0.45cm of L1] (L2) {L2 诊断层：编译器/运行时错误摘要、逐用例输出片段};
+  \node[layer, fill=purple!10, below=0.45cm of L2] (L3) {L3 形成性层：复杂度、风格、优化建议、上下文问答（概率输出）};
   \draw[arr] (L3) -- (L2);
   \draw[arr] (L2) -- (L1);
 \end{tikzpicture}

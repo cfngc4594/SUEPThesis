@@ -14,7 +14,7 @@
 
 在这套架构下，用户提交代码后，业务服务先完成参数校验和提交记录创建，再把评测任务交给执行层处理，执行层在隔离环境中完成编译、运行和结果回传，业务服务根据返回结果更新状态并提供前端展示，AI 分析则放在客观判题完成之后单独触发。这样设计的好处是主流程清楚，异常处理也更容易控制。
 
-本文在总体设计阶段同时关注三类视图：\textbf{逻辑视图}用于说明模块职责与依赖关系，使由题库、提交、判题与反馈构成的核心流程在结构上可追踪\cite{richardson2018microservices,newman2021buildingmicroservices}，\textbf{运行时协作视图}用于说明异步任务、队列与判题 worker 之间的消息与时序关系\cite{fowler2014microservices,rfc6455websocket}，\textbf{部署视图}用于说明 Web、数据库、判题执行节点与远程 Docker 等组件在不同机器或网络分区中的分布方式\cite{kubernetesdocs,dockerdocs,nist201716800190}。第五章给出的总体架构图更偏逻辑视图，本章用流程图、时序图与状态迁移图补充运行时协作与状态语义。
+本文在总体设计阶段同时关注三类视图：逻辑视图用于说明模块职责与依赖关系，使由题库、提交、判题与反馈构成的核心流程在结构上可追踪\cite{richardson2018microservices,newman2021buildingmicroservices}，运行时协作视图用于说明异步任务、队列与判题 worker 之间的消息与时序关系\cite{fowler2014microservices,rfc6455websocket}，部署视图用于说明 Web、数据库、判题执行节点与远程 Docker 等组件在不同机器或网络分区中的分布方式\cite{kubernetesdocs,dockerdocs,nist201716800190}。第五章给出的总体架构图更偏逻辑视图，本章用流程图、时序图与状态迁移图补充运行时协作与状态语义。
 
 \subsection{核心模块划分}
 
@@ -53,12 +53,12 @@
 \begin{longtable}{P{0.18\textwidth}P{0.25\textwidth}P{0.45\textwidth}}
 \caption{异步评测链路的主要组成}\\
 \toprule
-\textbf{组成部分} & \textbf{主要职责} & \textbf{设计说明} \\
+组成部分 & 主要职责 & 设计说明 \\
 \midrule
 \endfirsthead
 \multicolumn{3}{c}{续表\thetable}\\
 \toprule
-\textbf{组成部分} & \textbf{主要职责} & \textbf{设计说明} \\
+组成部分 & 主要职责 & 设计说明 \\
 \midrule
 \endhead
 \bottomrule
@@ -84,12 +84,12 @@
 \begin{longtable}{P{0.18\textwidth}P{0.26\textwidth}P{0.18\textwidth}P{0.28\textwidth}}
 \caption{异步评测场景下的状态流转设计}\\
 \toprule
-\textbf{阶段} & \textbf{典型状态} & \textbf{触发条件} & \textbf{设计目的} \\
+阶段 & 典型状态 & 触发条件 & 设计目的 \\
 \midrule
 \endfirsthead
 \multicolumn{4}{c}{续表\thetable}\\
 \toprule
-\textbf{阶段} & \textbf{典型状态} & \textbf{触发条件} & \textbf{设计目的} \\
+阶段 & 典型状态 & 触发条件 & 设计目的 \\
 \midrule
 \endhead
 \bottomrule
@@ -126,12 +126,12 @@
 \begin{longtable}{P{0.16\textwidth}P{0.18\textwidth}P{0.24\textwidth}P{0.32\textwidth}}
 \caption{判题执行方案比较}\\
 \toprule
-\textbf{方案} & \textbf{代表思路} & \textbf{主要优势} & \textbf{主要局限与适用说明} \\
+方案 & 代表思路 & 主要优势 & 主要局限与适用说明 \\
 \midrule
 \endfirsthead
 \multicolumn{4}{c}{续表\thetable}\\
 \toprule
-\textbf{方案} & \textbf{代表思路} & \textbf{主要优势} & \textbf{主要局限与适用说明} \\
+方案 & 代表思路 & 主要优势 & 主要局限与适用说明 \\
 \midrule
 \endhead
 \bottomrule
@@ -162,12 +162,12 @@
 \begin{longtable}{P{0.18\textwidth}P{0.26\textwidth}P{0.44\textwidth}}
 \caption{课程与作业组织实体设计}\\
 \toprule
-\textbf{实体} & \textbf{关键字段示例} & \textbf{主要职责} \\
+实体 & 关键字段示例 & 主要职责 \\
 \midrule
 \endfirsthead
 \multicolumn{3}{c}{续表\thetable}\\
 \toprule
-\textbf{实体} & \textbf{关键字段示例} & \textbf{主要职责} \\
+实体 & 关键字段示例 & 主要职责 \\
 \midrule
 \endhead
 \bottomrule
