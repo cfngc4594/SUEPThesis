@@ -302,35 +302,17 @@ AI 辅助子系统独立于主判题链路，在代码提交和编辑两个时�
 
 \subsection{基于 SSE 的聊天流式响应实现}\label{sec:ch5-ai-sse}
 
-上下文聊天采用流式响应，目的是降低学生提问后的等待时间。若等模型生成完整答案再返回，面板只能长时间显示加载状态；流式返回允许文本片段逐步送达浏览器，学生可在答案未完全生成时就开始阅读\cite{aisdk2024docs,aisdkreact2024docs}。
-
 服务端入口位于 \path{src/app/api/chat/route.ts}，解析对话历史 \texttt{messages} 后加入系统提示词，调用 \texttt{streamText} 获取流式输出，再通过 \texttt{toDataStreamResponse} 封装返回。同时设置 \texttt{maxDuration = 30} 约束长连接的最长执行时间\cite{nextjsdocs}。
 
-浏览器侧由 \path{src/features/problems/bot/components/form.tsx} 配合 \texttt{@ai-sdk/react} 的 \texttt{useChat} 钩子完成增量渲染，组件消费 \texttt{messages}、\texttt{input} 和 \texttt{handleSubmit} 等状态。新文本片段到达时，钩子更新消息列表，页面重新渲染，并通过 \texttt{MdxPreview} 展示为富文本。图~\ref{fig:ch5-ai-sse-seq} 展示了从用户发送消息到输出被逐步渲染的时序。
-
-\begin{figure}[htbp]
-  \centering
-  \resizebox{0.98\textwidth}{!}{\input{figures/ai_chat_sse_sequence.tex}}
-  \caption{聊天流式响应从浏览器到远端模型的完整时序示意}
-  \label{fig:ch5-ai-sse-seq}
-\end{figure}
+浏览器侧由 \path{src/features/problems/bot/components/form.tsx} 配合 \texttt{@ai-sdk/react} 的 \texttt{useChat} 钩子完成增量渲染，组件消费 \texttt{messages}、\texttt{input} 和 \texttt{handleSubmit} 等状态。新文本片段到达时，钩子更新消息列表，页面重新渲染，并通过 \texttt{MdxPreview} 展示为富文本。
 
 \subsection{提交后异步分析与 Tool Calling 强约束}
 
 提交后异步分析在 \path{src/app/actions/analyze-code.ts} 中实现，是 \texttt{CodeAnalysis} 表的唯一写入方。其难点不在于调用模型本身，而在于让概率性输出稳定落到关系型表的特定列上。
 
-\begin{figure}[htbp]
-  \centering
-  \resizebox{0.92\textwidth}{!}{\input{figures/ai_analyze_pipeline.tex}}
-  \caption{提交后异步分析的状态流转与 Tool Calling 调用关系示意}
-  \label{fig:ch5-ai-analyze-pipeline}
-\end{figure}
-
-\texttt{analyzeCode} 进入函数后立即创建一条 \texttt{status="QUEUED"} 的 \texttt{CodeAnalysis} 记录，在 \texttt{try} 块内推进到 \texttt{PROCESSING}，调用模型，并在工具回调内完成 \texttt{COMPLETED} 写入，异常则被 \texttt{catch} 捕获并将状态置为 \texttt{FAILED}，见图~\ref{fig:ch5-ai-analyze-pipeline}。这种先建占位记录再推进状态的模式有两个好处：前端统一查询 \texttt{status} 字段即可，无需复杂的存在性判断；即便模型超时或进程被回收，落库状态仍能反映任务启动但未完成的事实。分析任务由 Server Action 在提交受理后异步触发，只写入 \texttt{CodeAnalysis} 表，不阻塞判题事件。因此即使 AI 服务故障，学生仍可拿到 \texttt{AC}/\texttt{WA} 等结果，仅看不到分析卡片。
+\texttt{analyzeCode} 进入函数后立即创建一条 \texttt{status="QUEUED"} 的 \texttt{CodeAnalysis} 记录，在 \texttt{try} 块内推进到 \texttt{PROCESSING}，调用模型，并在工具回调内完成 \texttt{COMPLETED} 写入，异常则被 \texttt{catch} 捕获并将状态置为 \texttt{FAILED}。分析任务由 Server Action 在提交受理后异步触发，只写入 \texttt{CodeAnalysis} 表，不阻塞判题事件。因此即使 AI 服务故障，学生仍可拿到 \texttt{AC}/\texttt{WA} 等结果，仅看不到分析卡片。
 
 为避免模型以自由文本形式返回 JSON 再走正则解析，本实现采用 Vercel AI SDK 的 \texttt{tool} 与 \texttt{toolChoice} 联合机制\cite{aisdk2024docs}。在 \texttt{generateText} 调用中声明唯一一个名为 \texttt{saveCodeAnalysis} 的工具，其入参由 \texttt{zod} 描述为一组结构化字段，包括时间复杂度、空间复杂度、五项 0 至 100 整数分数与一段长文本反馈，回调函数直接以这些字段更新 \texttt{CodeAnalysis} 记录并将状态推进到 \texttt{COMPLETED}。同时通过 \texttt{toolChoice} 指定该工具为强制调用项，不允许模型产生自由文本。
-
-这一设计包含三个要点：工具入参直接以 \texttt{zod} 描述，AI SDK 将其编译为 OpenAI 兼容的 JSON Schema 注入 \texttt{tools} 字段；\texttt{execute} 回调拿到参数后立刻写库，将 Tool Calling 链路当作结构化回调使用；强制工具调用将模型偶发的格式错误收敛为字段缺失这一较轻形态。结合所有字段均声明为 \texttt{optional} 的设计，最坏情况下也只会出现分析记录字段不全，而不会出现整条记录无法落库的情况。
 
 \begingroup
 \small
@@ -453,38 +435,9 @@ AI 子系统的失败兜底分为三层：第一，所有 AI 调用以 Server Ac
 
 平台的多语言支持由数据层与界面层共同构成，数据层借助 \texttt{ProblemLocalization} 按 \texttt{locale} 组织题目标题、题面描述与题解说明，使同一道题目在不同语言下呈现一致的题面结构，界面层则需要系统化的国际化 i18n 组织来承载导航、按钮、错误提示、判题状态解释、AI 面板标题等高频文本，否则会出现题面是英文但按钮仍是中文这一类割裂体验。
 
-界面 i18n 工程实现采用 \texttt{next-intl} 与 Next.js App Router 结合：服务端组件通过 \texttt{getTranslations}/\texttt{getLocale} 读取当前语言环境下的文案，客户端组件通过 \texttt{useTranslations}/\texttt{useLocale} 绑定交互控件标签，语言偏好通过 Cookie 在请求之间保持，使刷新与导航后仍能获得一致的语言上下文\cite{nextjsdocs}。翻译资源以消息字典形式按命名空间集中维护，页面与组件只引用键路径而不硬编码长字符串。新增页面时可借助键缺失检测尽早发现漏翻译，若课程方需要调整术语例如将提交统一改为评测提交，只需改字典而无需在大量组件中全文搜索替换，服务端渲染路径与客户端 hydration 路径读取同一套消息源，可以减少首屏与二次渲染之间的语言不一致问题。
+界面 i18n 工程实现采用 \texttt{next-intl} 与 Next.js App Router 结合：服务端组件通过 \texttt{getTranslations}/\texttt{getLocale} 读取当前语言环境下的文案，客户端组件通过 \texttt{useTranslations}/\texttt{useLocale} 绑定交互控件标签，语言偏好通过 Cookie 在请求之间保持，使刷新与导航后仍能获得一致的语言上下文\cite{nextjsdocs}。
 
 除语言外，工作区还实现了深浅色主题切换，并使普通页面、Monaco 编辑器与差异对比编辑器使用对应主题，避免题面区域、代码区域与 Diff 视图在切换主题后出现明显割裂，这种语言与主题协同收敛的处理方式满足了长时间阅读、对比代码的基本需求。第六章交互测试中的多语言切换项 I-02 即用于核验界面文本与题面语境的一致性，而不仅是验证语言切换功能本身。
-
-\begingroup
-\small
-\setlength{\LTleft}{\fill}
-\setlength{\LTright}{\fill}
-\setlength{\tabcolsep}{3pt}
-\begin{longtable}{P{0.22\textwidth}P{0.24\textwidth}P{0.42\textwidth}}
-\caption{前端工作区状态持久化设计}\\
-\toprule
-持久化对象 & 存储方式 & 作用说明 \\
-\midrule
-\endfirsthead
-\multicolumn{3}{c}{续表\thetable}\\
-\toprule
-持久化对象 & 存储方式 & 作用说明 \\
-\midrule
-\endhead
-\bottomrule
-\endfoot
-工作区布局 & \texttt{localStorage} 中的布局 JSON & 保存题目页多面板布局，使用户刷新页面后仍可保留常用工作区组织方式。 \\
-题目语言选择 & 全局语言键与题目级语言键 & 支持用户在不同题目之间延续语言偏好，同时允许某道题保留独立语言选择。 \\
-题目代码草稿 & \texttt{<problemId>}\allowbreak\texttt{\_<language>} 形式的本地键值 & 正式提交前先把当前代码写入本地，页面误刷新或临时切换时也不容易把草稿弄丢。 \\
-编辑器路径标识 & \path{file:///<problemId>/main.<language>} & 为编辑器和语言服务提供稳定文件标识，便于语法高亮、诊断和语言切换。 \\
-优化代码对比态 & 内存状态与差异视图开关 & 生成优化版本后可切换 Diff 视图，对照原代码与模型改动。 \\
-\bottomrule
-\end{longtable}
-\endgroup
-
-这种状态组织方式说明，平台前端并非简单的静态题面展示页，而是更接近一个面向编程求解任务的轻量工作台。布局状态、语言偏好和代码草稿都以较细粒度保存，使用户在多次访问同一道题或在不同题目之间切换时能够保持较连续的工作体验。
 
 \subsection{Monaco 编辑器与基于 LSP 的 IDE 级语言服务}
 
@@ -507,71 +460,9 @@ AI 子系统的失败兜底分为三层：第一，所有 AI 调用以 Server Ac
   \label{fig:ch5-lsp-arch}
 \end{figure}
 
-\noindent 与传统 OJ 编辑器的对比价值。结合上述实现，平台在编码阶段能够提供三点价值：错误前移，在提交前即可通过诊断标记暴露大量语法与类型问题，减少无意义提交，反馈可解释，诊断与补全携带位置与符号信息，比单纯依赖编译器 stderr 更接近课堂讲解表达习惯，工程可运维，语言服务与业务站点解耦，可按语言横向扩容或替换版本，而不必随每次业务发版耦合发布。对教学场景而言，这类支持并不替代判题流程的客观性，但能显著降低学生在模板代码附近卡住的概率，从而把更多认知资源留给算法与测试设计本身。
-
-\noindent 工具栏对编辑器与 AI 功能的统一收口。上述 LSP 支持与第~\ref{sec:ch5-ai-sse}~节所述 AI 辅助功能最终都会汇聚到题目工作区上方的代码工具栏 \path{src/features/problems/code/components/toolbar/code-toolbar.tsx}。工具栏把语言切换、模板加载、\texttt{LSP} 状态指示灯、AI 相关按钮 \texttt{AnalyzeButton}、\texttt{OptimizeButton}、\texttt{ViewToggleButton} 与撤销、重做、格式化等基础编辑动作整合到同一行内，使学生在编码过程中无需离开视线焦点即可触发诊断、复杂度分析、优化结果与 Diff 对比等动作。表~\ref{tab:ch5-editor-toolbar} 汇总了工具栏中各项功能的实现方式与教学作用，可与图~\ref{fig:problem-workspace} 所示界面对照查看。
-
-\begingroup
-\small
-\setlength{\LTleft}{\fill}
-\setlength{\LTright}{\fill}
-\setlength{\tabcolsep}{3pt}
-\begin{longtable}{P{0.22\textwidth}P{0.26\textwidth}P{0.40\textwidth}}
-\caption{编辑器辅助功能与教学作用对应关系}\label{tab:ch5-editor-toolbar}\\
-\toprule
-辅助功能 & 实现方式 & 教学或使用价值 \\
-\midrule
-\endfirsthead
-\multicolumn{3}{c}{续表\thetable}\\
-\toprule
-辅助功能 & 实现方式 & 教学或使用价值 \\
-\midrule
-\endhead
-\bottomrule
-\endfoot
-语言切换与模板加载 & 在工具栏切换语言并同步读取对应模板代码 & 方便同一道题在 C、C++ 等不同语言间切换，降低重复初始化成本。 \\
-语言服务状态提示 & 工具栏 \texttt{LSP} 指示灯随 \texttt{WebSocket} 状态变化 & 提示语言服务是否已连通，避免断链时误判为代码无错误。 \\
-诊断波浪线与问题列表 & \texttt{clangd} 经 LSP 推送诊断，Monaco 映射为标记 & 在编辑阶段就能把拼写、语法、类型问题定位到具体行列，减少只能依赖编译日志排错带来的成本。 \\
-补全与签名帮助 & LSP 标准能力，如 \texttt{completion}\allowbreak/\allowbreak\texttt{signatureHelp} 等 & 提供接近本地 IDE 的输入体验，降低模板附近 API 试错的摩擦。 \\
-复杂度分析 & 见第~\ref{sec:ch5-ai-sse}~节同步辅助小节，返回结构化时间/空间复杂度 & 帮助学生在提交前形成复杂度意识，及早发现低效实现。 \\
-代码优化结果 & 见第~\ref{sec:ch5-ai-sse}~节同步辅助小节，返回独立保存的优化版本 & 为学生提供可参考的改进版本，但不强制覆盖原代码。 \\
-Diff 对比视图 & 当 \texttt{optimizedCode} 非空时启用，在普通与 Diff 编辑器间切换 & 突出修改位置与改动性质，便于学习具体优化思路。 \\
-基础编辑辅助 & 撤销、重做、格式化、复制等工具统一集成 & 提升日常编码效率，使工作区更接近实际开发环境。 \\
-\bottomrule
-\end{longtable}
-\endgroup
-
 \subsection{响应式布局与多终端适配}
 
 前端除桌面主场景外，也实现了平板与移动端的退化布局策略，系统会根据视口宽度切换交互组织：桌面端保留多面板并列与可折叠侧栏，移动端则将侧边内容收纳到抽屉面板，避免窄屏固定多栏造成拥挤。换言之，平台虽然以桌面编程训练为主，但小屏设备仍可完成核心操作链路。
-
-就具体使用方式而言，题目阅读、提交记录回顾、AI 问答和结果查看等信息密集型区域，在桌面端更适合并列呈现，以支持学生边看题、边编码、边复盘这种并行操作，而在平板或手机端，更合理的策略是让核心编辑区域保持主要可见，同时将次级面板收纳为按需展开的区域。本文采用核心内容常驻、辅助内容按需展开的方式，使同一工作区能够适配多类终端。
-
-\begingroup
-\small
-\setlength{\LTleft}{\fill}
-\setlength{\LTright}{\fill}
-\setlength{\tabcolsep}{3pt}
-\begin{longtable}{P{0.18\textwidth}P{0.28\textwidth}P{0.44\textwidth}}
-\caption{多终端界面适配策略说明}\\
-\toprule
-终端场景 & 界面组织策略 & 主要作用 \\
-\midrule
-\endfirsthead
-\multicolumn{3}{c}{续表\thetable}\\
-\toprule
-终端场景 & 界面组织策略 & 主要作用 \\
-\midrule
-\endhead
-\bottomrule
-\endfoot
-桌面端 & 保留多面板工作区、支持侧栏展开/收起与布局持久化 & 适合长时间读题、编码、看记录与查看 AI 反馈等复合任务并行开展。 \\
-平板端 & 保留主工作区，适度压缩边栏与辅助区域显示占比 & 在有限横向空间内尽量保留阅读与编辑连续性，适合课堂演示或随身复盘。 \\
-移动端 & 将侧边内容切换为抽屉式面板或按需展开区域 & 避免固定多栏布局导致的信息拥挤，保证题面浏览、结果查看和轻量修改仍可完成。 \\
-跨尺寸切换 & 统一沿用题目语言、草稿代码与部分本地状态组织方式 & 降低因窗口尺寸变化带来的使用割裂感，使平台行为保持一致。 \\
-\bottomrule
-\end{longtable}
-\endgroup
 
 \subsection{运行环境与本地部署}
 
@@ -585,16 +476,6 @@ Diff 对比视图 & 当 \texttt{optimizedCode} 非空时启用，在普通与 Di
 \end{figure}
 
 本地端到端构建验证结果如下：\texttt{docker compose -f compose.local.yml up -d} 启动后 \texttt{postgres}、\texttt{redis}、\texttt{inngest}、\texttt{soketi} 与主服务均进入可用状态，PostgreSQL 初始化阶段会通过 \path{init.sql} 额外创建 Inngest 使用的数据库，\texttt{bun install} 完成依赖安装并触发 Prisma Client 生成，\texttt{bunx prisma migrate deploy} 应用全部 15 个数据库迁移，\texttt{bunx prisma db seed} 完成种子数据初始化，\texttt{bun run build} 生产构建通过，构建输出中可见 \path{/problemset}、\path{/problems/[problemId]}、\path{/dashboard} 以及后台管理相关核心路由均已参与构建。图~\ref{fig:local-dev-env} 给出了运行界面与开发终端状态，可作为本地演示环境正常工作的证据。
-
-\section{关键实现结果汇总}
-
-本节对第五章已实现的关键功能进行集中汇总，便于与前文流程描述和后文测试结果对应阅读。
-
-判题入口 \texttt{judge} 位于 \path{src/app/actions/judge.ts}，在接收请求后先完成参数校验并创建状态为 \texttt{QD} 的提交记录，随后通过 \texttt{inngest.send} 投递事件，\path{src/inngest/functions/process-submission.ts} 订阅该事件并异步执行容器准备、编译与逐用例运行流程，底层执行由 \path{src/lib/judge-runtime.ts} 提供。该实现将请求受理与耗时执行解耦，前端可先获得已受理状态，再随着后台处理持续看到状态推进。
-
-与主判题不同，\texttt{CodeAnalysis} 使用独立状态枚举，例如 \texttt{QUEUED}、\texttt{PROCESSING}，由 \texttt{analyzeCode} 在提交受理后异步触发，体现主结果裁决与解释层分析相互拆分的方式。判题状态推送与语言服务同样基于 WebSocket 长连接，但二者在频道与事件语义上保持分离：前者通过 \texttt{problem-\{id\}} 与 \texttt{submission-\{id\}} 频道推送提交状态刷新，后者用于编辑期 LSP 会话。
-
-在课程化能力方面，本文已完成课程、选课关系、作业及作业题目关联等核心数据结构，并将作业上下文与提交记录建立关联。基于这一结构，教师端可进行课程维护、学生管理、作业创建与发布及统计查看，学生端也可在课程语境下进入作业并完成提交。现有题库、提交、判题轨迹与 AI 分析已经形成可运行的数据链条。
 
 \section{本章小结}
 
