@@ -2,50 +2,50 @@
 \begin{tikzpicture}[
   font=\scriptsize\sffamily,
   st/.style={draw, rounded corners=2pt, align=center, inner sep=4pt,
-             minimum width=2.0cm, minimum height=0.7cm},
+             minimum width=1.9cm, minimum height=0.7cm},
   st1/.style={st, fill=blue!8},
   st2/.style={st, fill=green!10},
   st3/.style={st, fill=orange!10},
   st4/.style={st, fill=purple!10},
   st5/.style={st, fill=red!10},
   ext/.style={draw, dashed, rounded corners=2pt, align=center, inner sep=4pt,
-              minimum width=2.6cm, font=\tiny\sffamily},
+              minimum width=2.45cm, font=\tiny\sffamily},
   arr/.style={-{Stealth[length=2mm]}, thick},
   lab/.style={font=\tiny, fill=white, inner sep=1pt}
 ]
   % 主状态线（横向，间距加大）
   \node[st1] (Q)   {QUEUED};
-  \node[st2, right=1.2cm of Q]  (P) {PROCESSING};
-  \node[st3, right=1.2cm of P]  (T) {Tool Calling};
-  \node[st4, right=1.2cm of T]  (C) {COMPLETED};
+  \node[st2, right=1.15cm of Q] (P) {PROCESSING};
+  \node[st3, right=1.15cm of P] (T) {Tool Calling};
+  \node[st4, right=1.15cm of T] (C) {COMPLETED};
 
   % FAILED：放在 P 与 T 中间正下方足够距离，避免与主线和外部框碰撞
   \node[st5, below=1.6cm of $(P)!0.5!(T)$] (F) {FAILED};
 
-  % 起点：判题完成后触发（左侧外部触发，与 Q 留出间距）
-  \node[ext, left=1.0cm of Q, fill=gray!10] (J)
-        {判题主链路完成\\\texttt{judge.ts}};
+  % 起点：提交受理后触发（左侧外部触发，与 Q 留出间距）
+  \node[ext, left=1.1cm of Q, fill=gray!10] (J)
+        {提交受理后\\\texttt{judge.ts}};
 
   % 模型与数据库：分别置于 T 上方与 C 下方，留足距离以容纳双向标签
-  \node[ext, above=1.6cm of T, fill=cyan!10] (M)
+  \node[ext, above=1.5cm of T, fill=cyan!10] (M)
         {\texttt{generateText} +\\\texttt{toolChoice: saveCodeAnalysis}};
-  \node[ext, below=1.6cm of C, fill=yellow!12] (DB)
+  \node[ext, below=1.55cm of C, fill=yellow!12] (DB)
         {\texttt{CodeAnalysis} 表\\结构化字段落库};
 
   % 主迁移
-  \draw[arr] (J) -- node[lab, above]{创建记录} (Q);
-  \draw[arr] (Q) -- node[lab, above]{开始处理} (P);
-  \draw[arr] (P) -- node[lab, above]{发起调用} (T);
-  \draw[arr] (T) -- node[lab, above]{工具回调 execute} (C);
+  \draw[arr] (J) -- node[lab, above, pos=0.55]{创建} (Q);
+  \draw[arr] (Q) -- node[lab, above, pos=0.50]{处理} (P);
+  \draw[arr] (P) -- node[lab, above, pos=0.50]{调用模型} (T);
+  \draw[arr] (T) -- node[lab, above, pos=0.42]{工具回调} (C);
 
   % 异常分支：分别从 P 和 T 走斜线到 FAILED，避免重叠
-  \draw[arr] (P.south) -- node[lab, sloped, above]{异常} (F.north west);
-  \draw[arr] (T.south) -- node[lab, sloped, above]{解析失败} (F.north east);
+  \draw[arr] (P.south) -- node[lab, sloped, above, pos=0.55]{异常} (F.north west);
+  \draw[arr] (T.south) -- node[lab, sloped, above, pos=0.55]{失败} (F.north east);
 
   % 与模型双向交互：去程实线左侧，回程虚线右侧
-  \draw[arr]         ([xshift=-7pt]T.north) -- node[lab, left]{Chat Completions}
+  \draw[arr]         ([xshift=-7pt]T.north) -- node[lab, left]{模型请求}
                                                 ([xshift=-7pt]M.south);
-  \draw[arr, dashed] ([xshift= 7pt]M.south)  -- node[lab, right]{结构化字段}
+  \draw[arr, dashed] ([xshift= 7pt]M.south)  -- node[lab, right]{结构化返回}
                                                 ([xshift= 7pt]T.north);
 
   % 与数据库交互

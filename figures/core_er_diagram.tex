@@ -4,17 +4,18 @@
   ent/.style={draw, rounded corners=2pt, inner sep=5pt, minimum width=2.1cm, align=center}
 ]
   \node[ent, fill=blue!6] (U) {User};
-  \node[ent, fill=blue!6, right=2.0cm of U] (P) {Problem};
-  \node[ent, fill=blue!6, below=1.0cm of P] (T) {Testcase};
-  \node[ent, fill=green!8, below=1.0cm of U] (S) {Submission};
-  \node[ent, fill=green!8, right=2.0cm of S] (TR) {TestcaseResult};
-  \node[ent, fill=purple!8, right=2.0cm of TR] (CA) {CodeAnalysis};
+  \node[ent, fill=blue!6, right=2.2cm of U] (P) {Problem};
+  \node[ent, fill=green!8, below=1.1cm of U] (S) {Submission};
+  \node[ent, fill=green!8, right=2.0cm of S] (J) {Judge};
+  \node[ent, fill=green!8, right=2.0cm of J] (JR) {JudgeRun};
+  \node[ent, fill=blue!6, above=1.1cm of JR] (T) {Testcase};
+  \node[ent, fill=purple!8, below=1.0cm of J] (CA) {CodeAnalysis};
 
-  \draw[-{Stealth}] (U) -- node[left, font=\scriptsize] {提交} (S);
-  \draw[-{Stealth}] (P) -- node[right, font=\scriptsize] {归属} (S);
-  \draw[-{Stealth}] (P) -- (T);
-  \draw[-{Stealth}] (S) -- (TR);
-  \draw[-{Stealth}] (T) -- (TR);
-  \draw[-{Stealth}, dashed] (S) to[bend right=28]
-        node[below, font=\scriptsize, pos=0.5] {1:1} (CA);
+  \draw[-{Stealth}] (U) -- node[left, font=\scriptsize] {1:N} (S);
+  \draw[-{Stealth}] (P) -- node[right, font=\scriptsize] {1:N} (S);
+  \draw[-{Stealth}] (P) -- node[above, font=\scriptsize] {1:N} (T);
+  \draw[-{Stealth}] (S) -- node[above, font=\scriptsize] {1:1} (J);
+  \draw[-{Stealth}] (J) -- node[above, font=\scriptsize] {1:N} (JR);
+  \draw[-{Stealth}] (T) -- node[right, font=\scriptsize] {1:N} (JR);
+  \draw[-{Stealth}, dashed] (S) -- node[below, font=\scriptsize, pos=0.42] {0..1} (CA);
 \end{tikzpicture}
