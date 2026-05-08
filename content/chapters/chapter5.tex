@@ -180,7 +180,7 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
 
 \section{题库与题目组织}
 
-题库管理模块主要由 Problem、ProblemLocalization、Template 和 Testcase 这几张表构成，其中 Problem 表存储了题目的基本信息，ProblemLocalization 表存储了题目的多语言文本，Template 表存储了不同编程语言的模板代码，Testcase 表则存储了具体的测试用例，这样的设计让题目内容易于维护，教师可通过如下图 5-6 的管理界面进行题目管理。
+题库管理模块主要由 Problem、ProblemLocalization、Template 以及 Testcase 这几张表组成，Problem 表用来存题目的基础信息，ProblemLocalization 表存题目对应的多语言文本，Template 表存不同编程语言的模板代码，Testcase 表则存具体的测试用例。这套设计让题目内容维护起来很方便，教师能通过图5-6的管理界面完成题目管理操作。
 
 \begin{figure}[htbp]
   \centering
@@ -214,7 +214,7 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
 
 \subsection{提交受理与状态流转}
 
-当用户点击提交按钮时，系统会首先校验用户登录状态、题目和测试用例是否存在，以及对应语言的 Docker 配置是否完整。校验通过后，\path{src/app/actions/judge.ts} 会创建一条状态为 \texttt{QD} 的 Submission 记录，并将提交 id 通过事件 \texttt{submissions/create} 投递给 Inngest。HTTP 请求在此阶段即可返回，后续编译和运行由异步链路处理。同时，提交入口会将当前界面语言传给 AI 分析动作，使反馈中的 \texttt{feedback} 字段与用户语言环境保持一致。
+用户点击提交按钮之后，系统会先检查用户的登录状态、确认题目和测试用例是否存在，同时还要核对对应语言的 Docker 配置是不是完整，检查都没问题后，\path{src/app/actions/judge.ts} 会生成一条状态为 \texttt{QD} 的 Submission 记录，再把提交 id 通过事件 \texttt{submissions/create} 发送给 Inngest。到这一步 HTTP 请求就可以返回结果了，接下来的编译和运行都交给异步链路处理，另外，提交入口还会把当前界面使用的语言传给 AI 分析环节，这样反馈里的 \texttt{feedback} 字段就能和用户的语言环境保持统一。
 
 先创建 Submission 记录再进入编译运行，可以确保用户每次提交都有稳定记录，前端也能立即展示。后续异步链路中的编译失败、运行失败或容器调用失败等信息，都会统一回写到同一条记录中，状态从 \texttt{QD}、\texttt{CP}、\texttt{RU} 到最终状态持续更新，便于问题排查和复盘。
 
