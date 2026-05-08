@@ -13,49 +13,7 @@
 
 在具体的判题服务上，本系统参考了 Judge0 与 DOMjudge 等开源项目的 API 接口与相关文档中提到的沙箱边界与运维经验\cite{judge0online,domjudgeonline}，将 Web 服务和判题服务单独部署，还支持本地编译代码和远程编译代码。本地编译时会通过宿主机套接字启动容器进行编译，远程编译时会按照配置里的协议、地址、端口、证书等配置与远程服务器中的 Docker 建立连接，同时系统本身也支持 Docker Compose 一键部署，避免出现环境不兼容的情况。
 
-\begingroup
-\small
-\setlength{\LTleft}{\fill}
-\setlength{\LTright}{\fill}
-\setlength{\tabcolsep}{3pt}
-\begin{xltabular}{\textwidth}{
-  P{0.20\textwidth}
-  >{\hsize=0.72\hsize\RaggedRight\arraybackslash\ttfamily\small}X
-  >{\hsize=1.28\hsize\RaggedRight\arraybackslash}X
-}
-\caption{核心实现模块与职责对应关系}\\
-\toprule
-实现模块 & 主要位置 & 核心职责 \\
-\midrule
-\endfirsthead
-\multicolumn{3}{c}{续表\thetable}\\
-\toprule
-实现模块 & 主要位置 & 核心职责 \\
-\midrule
-\endhead
-\bottomrule
-\endfoot
-提交与判题入口 & judge.ts & 完成身份校验、题目与测试用例存在性校验、Docker 配置校验、Submission 创建，并通过 \texttt{inngest.send} 投递异步判题事件。 \\
-容器运行时工具 & docker.ts & 负责本地或远程 Docker 客户端初始化、镜像可用性检查、判题容器创建、提交代码打包上传以及输出流长度控制。 \\
-编译执行模块 & compile.ts & 根据语言生成编译命令，更新提交状态，截断过长编译输出，并把编译结果回写数据库。 \\
-运行判题模块 & process-submission.ts / judge-runtime.ts & 负责逐用例执行、标准输入拼接、输出比对、时间与内存统计、短路终止以及 JudgeRun 落库。 \\
-AI 分析模块 & analyze-code.ts & 在判题核心流程外异步创建 CodeAnalysis 记录，调用大模型生成结构化反馈，并维护分析状态流转。 \\
-题目读取模块 & getProblem.ts & 聚合题目基本信息、模板代码、测试用例和本地化内容，并将题面描述序列化为可直接渲染的 MDX 数据。 \\
-编辑器状态模块 & problem-editor.ts & 维护当前题目的语言选择、草稿代码、编辑器路径、差异视图状态与本地持久化逻辑。 \\
-工作区布局模块 & flexlayout.ts & 管理题目求解工作区的初始布局与本地持久化，使用户可以在统一界面内组织题面、代码、提交和测试面板。 \\
-\bottomrule
-\end{xltabular}
-\endgroup
-
 \section{身份认证与会话管理实现}
-
-平台采用 Auth.js 在 Next.js App Router 下完成身份认证，其 npm 包名为 \texttt{next-auth}，工程依赖为 5.x 预发布版本\cite{authjsdocs,nextjsdocs}。Auth.js 通过 \path{src/lib/auth.ts} 导出 \texttt{auth}、\texttt{handlers}、\texttt{signIn} 与 \texttt{signOut}。其中 \texttt{handlers} 由 \path{src/app/api/auth/[...nextauth]/route.ts} 以 \texttt{GET}/\texttt{POST} 形式挂载到 \texttt{/api/auth/*}，从而承接 OAuth 回调与框架内部的会话读写\cite{authjsdocs}。持久化适配器为 \texttt{PrismaAdapter}，用户、账户与会话等记录写入 PostgreSQL，与业务表共享同一数据库\cite{prismadocs}。
-
-\subsection{认证提供方与登录入口页面}
-
-\path{src/lib/auth.ts} 中注册的 \texttt{providers} 包括 \texttt{Credentials}、\texttt{GitHub} 和 \texttt{Google} 三类。\texttt{Credentials} 用于邮箱密码登录，\texttt{authorize} 回调内使用 \texttt{zod} 定义的 \texttt{authSchema} 解析入参，以 \texttt{Prisma} 按邮箱查询用户并以 \texttt{bcrypt.compare} 校验口令散列，校验失败时返回 \texttt{null}。\texttt{GitHub} 启用 \texttt{allowDangerousEmailAccountLinking} 以便与已有邮箱账户做提供方关联，相关风险控制遵循 Auth.js 文档中的安全指引\cite{authjsdocs}。\texttt{Google} 的配置方式与 GitHub 同属 OAuth 提供方，登录页同样渲染为第三方按钮。下文以 GitHub 为主描述 OAuth 主流程，Google 与之同构。
-
-自定义登录页路径为 \texttt{pages.signIn = "/sign-in"}，对应 \path{src/app/(auth)/sign-in/page.tsx}。该页面上方为 \texttt{CredentialsSignInForm}，实现位于 \path{src/components/credentials-sign-in-form.tsx}，下方为分隔线后遍历 \texttt{providerMap} 生成的 OAuth 按钮表单。\texttt{providerMap} 由 \texttt{providers} 派生并过滤掉 \texttt{credentials}，避免与上方表单重复\cite{authjsdocs}。注册流程由 \path{src/app/actions/auth.ts} 中的 \texttt{signUpWithCredentials} 完成。系统先校验邮箱未被占用，再以 \texttt{bcrypt.hash} 的 10 轮加盐策略写入密码散列并创建用户。若当前为全库首位用户，则将角色更新为管理员，这与 \texttt{createUser} 事件中将首位用户赋予 \texttt{ADMIN} 角色的逻辑一致。该登录页的 UI 形态见图~\ref{fig:ch5-signin}。
 
 \begin{figure}[!htbp]
   \centering
@@ -64,15 +22,11 @@ AI 分析模块 & analyze-code.ts & 在判题核心流程外异步创建 CodeAna
   \label{fig:ch5-signin}
 \end{figure}
 
-\subsection{邮箱凭据登录与数据库会话}
+本系统中的不同角色的登录入口统一为 \texttt{/sign-in} 页面，该页面提供了邮箱密码登录和第三方 OAuth 登录两种方式，界面如图~\ref{fig:ch5-signin} 所示，默认情况下，首个注册用户会被赋予管理员角色。
 
-凭据登录在 UI 层并非直接由浏览器调用 \texttt{/api/auth/callback/credentials}，而是先进入 Server Action \texttt{signInWithCredentials}：再次完成 \texttt{zod} 校验、数据库查询与 \texttt{bcrypt} 比对后，调用 \texttt{signIn("credentials", \{ redirect: false \})} 交由 Auth.js 建立会话\cite{authjsdocs}。成功后在客户端以 \texttt{toast} 提示并 \texttt{router.push(callbackUrl || "/")}。
+邮箱密码登录需要先在系统中注册账号，点击注册会进行表单校验以及显示对应的用户提示，例如该邮箱已注册、前后密码不一致，同时服务端会进行二次校验。
 
-Auth.js 配置中，\texttt{callbacks.jwt} 在检测到 \texttt{account.provider === "credentials"} 时为 \texttt{token} 打上 \texttt{credentials} 标记。随后在 \texttt{jwt.encode} 的自定义实现里，若 \texttt{token.credentials} 为真，则不再走默认 JWT 字符串编码，而是调用工程内的 \texttt{createSession}：生成 UUID 形式的 \texttt{sessionToken}，通过 \texttt{PrismaAdapter.createSession} 写入数据库，并把过期时间设为常量 \texttt{SESSION\_EXPIRY\_MS}，即 30 天。该返回值作为 Cookie 载荷由框架写入，从而使凭据登录路径下的会话以数据库会话为主，便于与 \texttt{PrismaAdapter} 其余表结构统一审计\cite{authjsdocs,prismadocs}。
-
-\subsection{GitHub OAuth 登录与受保护业务的衔接}
-
-用户点击 GitHub 按钮时，登录页内联 Server Action 调用 \texttt{signIn("github", \{ redirectTo: callbackUrl \})}。浏览器随后跳转至 GitHub 授权端点，用户在 GitHub 站点完成授权确认后回调本站的 \texttt{/api/auth/callback/github}，最终仍由 \texttt{handlers} 统一处理，流程见图~\ref{fig:ch5-oauth}。与凭据分支不同，OAuth 成功后的 \texttt{jwt.encode} 走 \texttt{next-auth/jwt} 的默认 \texttt{encode}，即不进入上述 \texttt{createSession} 分支。账户绑定与 \texttt{linkAccount} 等事件在 \texttt{events} 钩子中记录结构化日志，便于排查账号合并问题\cite{authjsdocs}。
+第三方 OAuth 登录目前接入了 GitHub 与 Google 两种方式，以 GitHub 为例，用户点击对应按钮后浏览器会先跳转到 GitHub 授权页，授权完成后会携带相关 token 进行回调，本系统的认证路由会根据 token 自动进行用户信息查询，如果用户不存在则进行注册，如果用户存在则进行登录，过程如图~\ref{fig:ch5-oauth} 所示。
 
 \begin{figure}[!htbp]
   \centering
@@ -81,7 +35,7 @@ Auth.js 配置中，\texttt{callbacks.jwt} 在检测到 \texttt{account.provider
   \label{fig:ch5-oauth}
 \end{figure}
 
-无论从哪条分支登录，业务侧在服务端均通过统一的 \texttt{await auth()} 读取会话，例如 \path{src/app/actions/judge.ts} 与 \path{src/app/(protected)/dashboard/layout.tsx}。判题入口据此取得 \texttt{session.user.id}，再写入 \texttt{Submission} 的外键，从而保证提交归属与认证身份一致。受保护页面在 layout 层就完成会话校验，未登录用户会被框架重定向到自定义登录页 \texttt{/sign-in}，避免在每个页面或 Server Action 中重复判空。安全方面，OAuth 客户端 ID、Secret 与回调 URL 等敏感配置项均通过 \texttt{getRequiredEnv} 从环境变量读取，缺失即抛错，避免凭据进入版本库或在生产期才暴露问题\cite{owasp2021top10}。两条登录分支的完整时序对比可见图~\ref{fig:ch5-auth-overview}。
+对本系统而言，两种登录方式共用一套用户与账户表，业务侧不需要区分用户最初来自邮箱注册还是 OAuth 授权，登录成功后，系统会在 Cookie 中保存会话令牌，后续访问系统不需要再次进行登录，同时不同用户角色在某些界面上的权限不同，例如管理员可以访问后台管理页面，教师可以管理题目和课程，学生可以提交代码和查看结果，具体的登录流程如图~\ref{fig:ch5-auth-overview} 所示。
 
 \begin{figure}[!htbp]
   \centering
@@ -101,6 +55,8 @@ Auth.js 配置中，\texttt{callbacks.jwt} 在检测到 \texttt{account.provider
   \caption{平台身份认证主要流程示意}
   \label{fig:ch5-auth-overview}
 \end{figure}
+
+\FloatBarrier
 
 \section{核心数据模型}
 
