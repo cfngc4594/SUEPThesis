@@ -9,7 +9,7 @@
   \label{fig:ch5-system-arch}
 \end{figure}
 
-本系统如上图架构所示采用全栈开发的模式，前端部分使用 React 框架展示题目描述、题解、测试用例、提交记录和 AI 辅助反馈组件，组件库与样式部分采用 Tailwind 和 Shadcn/UI，通过 Zustand 进行状态管理，后端部分使用 Server Action 提交代码后，通过 Inngest 调度容器进行代码编译与运行的同时还会通过 Vercel AI SDK 对提交的代码进行辅助分析并生成结构化的反馈结果，并将反馈结果写入 Prisma 管理的数据库中，Prisma 还可以根据表结构生成 TypeScript 类型，不但可以提供开发过程中的类型安全，让前后端使用统一的接口类型，还能非常方便地实现在不同关系型数据库中的迁移。
+本系统如上图架构所示采用全栈开发的模式，前端部分使用 React 框架展示题目描述、题解、测试用例、提交记录和 AI 辅助反馈组件，组件库与样式部分采用 Tailwind 和 Shadcn/UI，通过 Zustand 进行状态管理，后端部分使用 Server Action 接收代码提交后，会先创建可追踪的提交记录，然后再通过 Inngest 调度容器完成代码编译与运行，同时 Vercel AI SDK 会对提交的代码进行分析并生成相应分数，这些内容最终都会写入到 Prisma 管理的数据库中，Prisma 还可以根据表结构生成 TypeScript 类型，不但可以提供开发过程中的类型安全，让前后端使用统一的接口类型，还能非常方便地实现在不同关系型数据库中的迁移。
 
 在具体的判题服务上，本系统参考了 Judge0 与 DOMjudge 等开源项目的 API 接口与相关文档中提到的沙箱边界与运维经验\cite{judge0online,domjudgeonline}，将 Web 服务和判题服务单独部署，还支持本地编译代码和远程编译代码。本地编译时会通过宿主机套接字启动容器进行编译，远程编译时会按照配置里的协议、地址、端口、证书等配置与远程服务器中的 Docker 建立连接，同时系统本身也支持 Docker Compose 一键部署，避免出现环境不兼容的情况。
 
@@ -224,7 +224,7 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
 
 \subsection{提交受理与状态流转}
 
-在提交入口处，系统会校验用户是否登录、题目是否存在、测试用例是否存在以及对应语言的 Docker 配置是否完整。通过这些前置检查，可以避免无效请求直接进入判题流程。校验通过后，\path{src/app/actions/judge.ts} 会创建状态为 \texttt{QD} 的 Submission 记录，并以 \texttt{name="submissions/create"} 的事件将提交 id 投递给 Inngest。HTTP 请求在受理阶段即可返回，后续编译和运行交给异步链路继续处理。
+在提交入口处，系统会校验用户是否登录、题目是否存在、测试用例是否存在以及对应语言的 Docker 配置是否完整。通过这些前置检查，可以避免无效请求直接进入判题流程。校验通过后，\path{src/app/actions/judge.ts} 会创建状态为 \texttt{QD} 的 Submission 记录，并以 \texttt{name="submissions/create"} 的事件将提交 id 投递给 Inngest。HTTP 请求在受理阶段即可返回，后续编译和运行交给异步链路继续处理。同时，提交入口会把当前界面语言一并传给 AI 分析动作，使结构化反馈的 \texttt{feedback} 字段尽量与用户当前语言环境保持一致。
 
 把 Submission 记录放在编译、运行之前先创建出来，在工程上有明确意义。用户从点击提交开始就会对应到一条稳定记录，前端也能立即展示这条记录，即使后面编译失败、运行失败或者容器调用失败，错误信息也能统一回写到同一条记录里。在异步链路里，从 \texttt{QD}、\texttt{CP}、\texttt{RU} 到最终状态都持续写回同一条记录，排查问题和事后复盘都会更直接。
 
@@ -232,9 +232,9 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
 
 \subsection{编译流程实现}
 
-编译阶段由 \path{src/inngest/functions/process-submission.ts} 调度 \path{src/app/actions/compile.ts} 执行。函数会先把 Submission 状态更新为编译中，再根据语言类型生成对应命令。本文实现中，C 语言通过 gcc -O2 编译为 main，C++ 通过 g++ -O2 编译为 main。为避免编译日志无限增长，系统对编译输出设置了长度限制，若编译失败，则将错误信息写回 Submission.message，并同步写入 Judge 的 \texttt{compileOutput} 字段，同时把状态更新为 Compilation Error。
+编译阶段由 \path{src/inngest/functions/process-submission.ts} 直接调度 \path{src/lib/judge-runtime.ts} 中的运行时封装完成。函数会先把 Submission 状态更新为编译中，再根据语言类型生成对应命令。本文实现中，C 语言通过 gcc -O2 编译为 main，C++ 通过 g++ -O2 编译为 main。若编译失败，则将错误信息写回 Submission.message，并同步写入 Judge 的 \texttt{compileOutput} 字段，同时把状态更新为 Compilation Error。
 
-编译输出长度限制是一个容易被忽略但实际很有必要的细节，若对编译器标准错误流完全不做限制，极端情况下可能产生非常长的错误日志，不仅增加数据库写入压力，也会影响页面展示和网络传输效率。本文通过受限写入流截断编译输出，只保留限定长度内的错误信息。对于教学场景而言，这样的处理通常不会影响学生定位常见语法错误。
+编译输出的落库位置同样需要单独说明。当前实现将编译器标准错误流保存在提交消息和 Judge 轨迹中，前端详情页优先读取这些字段渲染为 shell 片段，使学生能够直接看到语法错误或链接错误。后续若面向更大规模运行环境，可继续在该链路上增加输出长度上限，避免极端日志影响数据库写入和页面展示。
 
 \subsection{运行与用例判定实现}
 
@@ -262,7 +262,7 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
 
 除编译失败、答案错误以及运行超时等学生侧常见结果外，工程实现还必须覆盖一类系统侧异常：例如 Docker 守护进程不可用、镜像缺失、题目或测试数据配置不完整、远程 Docker 连接失败等。此类问题若不在状态模型中单独区分，容易被误展示为普通 \texttt{CE}/\texttt{WA}，从而误导学生把环境问题当作算法问题反复修改。
 
-本文将部分系统级失败映射为 \texttt{SE} 状态，并在 \texttt{Submission.message} 中写入可读的错误摘要，同时仍尽量保留已创建的提交记录，使前端能够展示一种失败但仍可追踪的状态。这与第四章状态流转设计相呼应，受理记录一旦生成，就应成为排错与复盘的锚点。与此同时，编译与运行阶段的输出在落库前进行长度截断，以避免极端日志撑爆数据库字段或拖慢页面渲染，在教学解释上，这一策略应被理解为保留足够定位信息，而不是无损保存完整 stderr。
+本文将部分系统级失败映射为 \texttt{SE} 状态，并在 \texttt{Submission.message} 中写入可读的错误摘要，同时仍尽量保留已创建的提交记录，使前端能够展示一种失败但仍可追踪的状态。这与第四章状态流转设计相呼应，受理记录一旦生成，就应成为排错与复盘的锚点。与此同时，编译输出、运行输出和错误输出分别归入提交消息、Judge 轨迹与 JudgeRun 记录，避免把多种诊断信息混入同一个字段。
 
 在可观测性层面，判题链路至少应能在日志中关联用户、题目、提交 id 与容器 id 这一最小追踪链。本文实现已将提交 id 贯穿在 \texttt{judge.ts}、Inngest 函数与编译运行模块中，便于定位事件投递、函数执行和容器运行各阶段的问题。当前实现即使未接入分布式追踪系统，也应在关键异常分支打印结构化日志字段，便于在课程集中提交时快速判断瓶颈究竟出在异步函数吞吐不足，还是出在单机 Docker 资源耗尽\cite{kubernetesdocs}。
 
@@ -295,11 +295,11 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
 
 \section{AI 辅助子系统的流式响应与上下文构造实现}
 
-AI 辅助子系统并非主判题链路的一部分，而是围绕客观判题已完成与正在编辑代码这两类时机，为学生提供解释性、提示性与对话性支持的附加能力。本节按总体架构、模型抽象、流式响应、结构化落库、编辑期同步辅助、上下文构造以及边界与兜底七个层次依次展开。其中，流式响应小节专门讨论实现工程中最关键的 SSE 风格数据流细节。该细节直接决定了上下文聊天面板能否在网页上做到回复内容逐字浮现而非整段等待，并在概念上与第四章异步判题的状态推送同属长连接增量推送范畴。
+AI 辅助子系统并非主判题链路的一部分，而是围绕提交代码与正在编辑代码这两类时机，为学生提供解释性、提示性与对话性支持的附加能力。本节按总体架构、模型抽象、流式响应、结构化落库、编辑期同步辅助、上下文构造以及边界与兜底七个层次依次展开。其中，流式响应小节专门讨论实现工程中最关键的 SSE 风格数据流细节。该细节直接决定了上下文聊天面板能否在网页上做到回复内容逐字浮现而非整段等待，并在概念上与第四章异步判题的状态推送同属长连接增量推送范畴。
 
 \subsection{子系统总体架构与三类入口}
 
-工程实现表明，平台中所有 AI 调用最终都汇聚到统一的模型抽象层，但在前端表现上对应三类相互独立的入口，分别是提交后异步分析、编辑期同步辅助与上下文聊天。提交后异步分析由 \path{src/app/actions/analyze-code.ts} 提供 \texttt{analyzeCode} Server Action，在判题流程结束后被触发，结果作为 \texttt{CodeAnalysis} 行记录持久化。编辑期同步辅助由 \path{src/app/actions/analyze.ts} 中的 \texttt{analyzeComplexity}、\texttt{optimizeCode} 与 \path{src/app/actions/ai-improve.ts} 中的 \texttt{optimizeCode} 等 Server Action 提供，被工具栏按钮直接调用并以 JSON 形式同步返回。上下文聊天由 \path{src/app/api/chat/route.ts} 暴露的 Route Handler 与浏览器侧 \texttt{useChat} 钩子配合工作，是子系统中唯一以流式响应方式与用户交互的入口\cite{aisdk2024docs,aisdkreact2024docs}。
+工程实现表明，平台中所有 AI 调用最终都汇聚到统一的模型抽象层，但在前端表现上对应三类相互独立的入口，分别是提交后异步分析、编辑期同步辅助与上下文聊天。提交后异步分析由 \path{src/app/actions/analyze-code.ts} 提供 \texttt{analyzeCode} Server Action，在提交记录创建后被异步触发，结果作为 \texttt{CodeAnalysis} 行记录持久化。编辑期同步辅助由 \path{src/app/actions/analyze.ts} 中的 \texttt{analyzeComplexity}、\texttt{optimizeCode} 与 \path{src/app/actions/ai-improve.ts} 中的 \texttt{optimizeCode} 等 Server Action 提供，被工具栏按钮直接调用并以 JSON 形式同步返回。上下文聊天由 \path{src/app/api/chat/route.ts} 暴露的 Route Handler 与浏览器侧 \texttt{useChat} 钩子配合工作，是子系统中唯一以流式响应方式与用户交互的入口\cite{aisdk2024docs,aisdkreact2024docs}。
 
 \begin{figure}[htbp]
   \centering
@@ -308,7 +308,7 @@ AI 辅助子系统并非主判题链路的一部分，而是围绕客观判题�
   \label{fig:ch5-ai-arch}
 \end{figure}
 
-图~\ref{fig:ch5-ai-arch} 中三类入口在用户感知上差异明显：提交后分析对学生而言体现为几秒后页面上自动浮现一张评估卡片，编辑期辅助则体现为按钮加载圈停止后弹出 Diff 视图，而上下文聊天则需要让响应字符在屏幕上实时浮现。这种差异并非交互设计偏好，而是由后端 API 形态决定的：前两者使用 \texttt{generateText} 一次性返回，第三者必须使用 \texttt{streamText} 与底层模型建立长连接。下文先给出统一的模型层抽象，再分别讨论两类形态的实现要点。
+图~\ref{fig:ch5-ai-arch} 中三类入口在用户感知上差异明显：提交后分析对学生而言体现为几秒后页面上自动浮现一张评估卡片，编辑期辅助则体现为按钮加载圈停止后弹出 Diff 视图，而上下文聊天则需要让响应字符在屏幕上实时浮现。这种差异并非交互设计偏好，而是由后端 API 形态决定的：前两者使用 \texttt{generateText} 一次性返回，第三者必须使用 \texttt{streamText} 与底层模型建立长连接。提交后分析虽然与判题事件围绕同一个 submissionId 展开，但不参与 \texttt{AC}/\texttt{WA} 等状态裁决。下文先给出统一的模型层抽象，再分别讨论两类形态的实现要点。
 
 \subsection{模型抽象层与 OpenAI 兼容 Provider 接入}
 
@@ -354,7 +354,7 @@ AI 辅助子系统并非主判题链路的一部分，而是围绕客观判题�
   \label{fig:ch5-ai-analyze-pipeline}
 \end{figure}
 
-\noindent 异步状态机与判题流程解耦。\texttt{analyzeCode} 进入函数体后立即创建一条 \texttt{status="QUEUED"} 的 \texttt{CodeAnalysis} 记录，再在 \texttt{try} 块内推进到 \texttt{PROCESSING}，调用模型，并在工具回调内完成 \texttt{COMPLETED} 写入，任何一步异常都会被 \texttt{catch} 捕获并把状态置为 \texttt{FAILED}，见图~\ref{fig:ch5-ai-analyze-pipeline}。这种先建占位记录再推进状态的模式有两个直接好处。前端无需轮询时使用复杂的记录是否存在判断逻辑，统一查同一行的 \texttt{status} 字段即可。即便模型返回超时或调用方进程被回收，最终落库状态仍能反映任务启动但未完成这一事实，便于教师与运维人员排查。在与判题流程的关系上，分析任务由 Server Action 异步触发但不阻塞判题返回，因此即便 AI 服务故障，学生仍可拿到 \texttt{AC}/\texttt{WA} 等标准结果，仅看不到分析卡片。
+\noindent 异步状态机与判题流程解耦。\texttt{analyzeCode} 进入函数体后立即创建一条 \texttt{status="QUEUED"} 的 \texttt{CodeAnalysis} 记录，再在 \texttt{try} 块内推进到 \texttt{PROCESSING}，调用模型，并在工具回调内完成 \texttt{COMPLETED} 写入，任何一步异常都会被 \texttt{catch} 捕获并把状态置为 \texttt{FAILED}，见图~\ref{fig:ch5-ai-analyze-pipeline}。这种先建占位记录再推进状态的模式有两个直接好处。前端无需轮询时使用复杂的记录是否存在判断逻辑，统一查同一行的 \texttt{status} 字段即可。即便模型返回超时或调用方进程被回收，最终落库状态仍能反映任务启动但未完成这一事实，便于教师与运维人员排查。在与判题流程的关系上，分析任务由 Server Action 在提交受理后异步触发，但只写入 \texttt{CodeAnalysis} 表，不阻塞 Inngest 判题事件的执行。因此即便 AI 服务故障，学生仍可拿到 \texttt{AC}/\texttt{WA} 等标准结果，仅看不到分析卡片。
 
 \noindent Tool Calling 强约束输出。为避免模型以 JSON 自由文本回答后再走正则解析这一脆弱方案，本实现采用 Vercel AI SDK 的 \texttt{tool} 与 \texttt{toolChoice} 联合机制\cite{aisdk2024docs}。在 \texttt{generateText} 调用中声明唯一一个名为 \texttt{saveCodeAnalysis} 的工具，其入参由 \texttt{zod} 直接描述为一组结构化字段，包含时间复杂度、空间复杂度、五项 0 到 100 整数分数与一段长文本反馈，详见表~\ref{tab:ch5-codeanalysis-fields}。其回调函数直接以这些字段更新对应 \texttt{CodeAnalysis} 记录并把状态推进到 \texttt{COMPLETED}。同时通过 \texttt{toolChoice} 指定该工具为强制调用项，使模型在本次响应中必须以工具调用形式返回结构化结果，不允许产生自由文本。
 
@@ -411,7 +411,7 @@ AI 辅助子系统并非主判题链路的一部分，而是围绕客观判题�
 
 \subsection{故障兜底与教学边界}
 
-AI 子系统的失败兜底策略可归纳为三层：对判题流程无影响：所有 AI 调用都以 Server Action 或独立 Route Handler 形式存在，不在 \texttt{judge.ts} 核心流程上同步等待，因而即使模型不可达、配额耗尽或返回格式错误，学生仍能完成提交并获得标准 \texttt{AC}/\texttt{WA}/\texttt{TLE} 等结果。结构化字段降级：在 \texttt{analyze-code.ts} 中所有 zod 字段均为 \texttt{optional}，若模型返回缺少某些维度，最终表现只是部分字段为空，而不是整条记录写入失败，前端只需对空值显示占位即可，不影响其他字段渲染。状态可观测：所有失败分支都把状态写为 \texttt{FAILED} 并保留时间戳，配合后台日志可以快速判断问题位于模型调用前、模型超时，还是工具回调内 SQL 写入失败。
+AI 子系统的失败兜底策略可归纳为三层：对判题结果无影响：所有 AI 调用都以 Server Action 或独立 Route Handler 形式存在，其结果不参与 \texttt{Submission.status} 的状态裁决，因而即使模型不可达、配额耗尽或返回格式错误，学生仍能完成提交并获得标准 \texttt{AC}/\texttt{WA}/\texttt{TLE} 等结果。结构化字段降级：在 \texttt{analyze-code.ts} 中所有 zod 字段均为 \texttt{optional}，若模型返回缺少某些维度，最终表现只是部分字段为空，而不是整条记录写入失败，前端只需对空值显示占位即可，不影响其他字段渲染。状态可观测：所有失败分支都把状态写为 \texttt{FAILED} 并保留时间戳，配合后台日志可以快速判断问题位于模型调用前、模型超时，还是工具回调内 SQL 写入失败。
 
 教学边界方面，本子系统遵守第三章给出的 AI 可控性原则：聊天面板的 system prompt 强调要用用户语言回复并保持简洁，而非直接给出完整答案，优化代码不会覆盖原代码，且需用户主动按按钮才会触发，分析结果与客观判题状态分离存储，从数据模型层面阻断了 AI 评分污染判题结果的可能。这些工程化处理使 AI 在系统中始终扮演解释与提示的角色，而非充当裁判。
 
@@ -603,7 +603,7 @@ Diff 对比视图 & 当 \texttt{optimizedCode} 非空时启用，在普通与 Di
 
 \subsection{运行环境与本地部署}
 
-平台采用多容器编排：\texttt{judge4c} 主服务承载页面访问、业务处理与判题入口，\texttt{postgres} 承担业务数据持久化，\texttt{redis} 作为 Inngest 与 Soketi 的共享基础设施，\texttt{inngest} 负责事件函数编排，\texttt{soketi} 负责判题状态实时推送，\texttt{lsp-c}/\texttt{lsp-cpp} 为 C/C++ 编辑器提供语言服务。主服务通过 \texttt{depends\_on} 等待数据库、Redis、Inngest 与语言服务健康检查通过后再启动，降低初始化阶段的偶发失败。判题执行位置由配置项区分为本地 Docker 与远程 Docker 两种模式：本地模式直接经宿主机 Docker 套接字管理容器，远程模式则按协议、地址、端口与 TLS 证书建立连接，从而把业务服务部署位置与判题执行位置解耦，为判题节点上云提供直接基础。
+平台采用多容器编排：\texttt{judge4c} 主服务承载页面访问、业务处理与判题入口，\texttt{postgres} 承担业务数据持久化，\texttt{redis} 作为 Inngest 与 Soketi 的共享基础设施，\texttt{inngest} 负责事件函数编排，\texttt{soketi} 负责判题状态实时推送，\texttt{lsp-c}/\texttt{lsp-cpp} 为 C/C++ 编辑器提供语言服务。主服务通过 \texttt{depends\_on} 等待数据库、Redis、Inngest 与语言服务健康检查通过后再启动，降低初始化阶段的偶发失败。当前镜像基础层采用 \texttt{node:22-bookworm-slim}，并安装 \texttt{openssl}、\texttt{ca-certificates} 与 \texttt{curl}，以满足 Prisma/OpenSSL 运行依赖和容器健康检查需要。判题执行位置由配置项区分为本地 Docker 与远程 Docker 两种模式：本地模式直接经宿主机 Docker 套接字管理容器，远程模式则按协议、地址、端口与 TLS 证书建立连接，从而把业务服务部署位置与判题执行位置解耦，为判题节点上云提供直接基础。
 
 \begin{figure}[htbp]
   \centering
@@ -612,7 +612,7 @@ Diff 对比视图 & 当 \texttt{optimizedCode} 非空时启用，在普通与 Di
   \label{fig:local-dev-env}
 \end{figure}
 
-本地端到端构建验证结果如下：\texttt{docker compose -f compose.local.yml up -d} 启动后 \texttt{postgres}、\texttt{redis}、\texttt{inngest}、\texttt{soketi} 与主服务均进入可用状态，\texttt{bun install} 完成依赖安装并触发 Prisma Client 生成，\texttt{bunx prisma migrate deploy} 应用全部 15 个数据库迁移，\texttt{bunx prisma db seed} 完成种子数据初始化，\texttt{bun run build} 生产构建通过，构建输出中可见 \path{/problemset}、\path{/problems/[problemId]}、\path{/dashboard} 以及后台管理相关核心路由均已参与构建。图~\ref{fig:local-dev-env} 给出了运行界面与开发终端状态，可作为本地演示环境正常工作的证据。
+本地端到端构建验证结果如下：\texttt{docker compose -f compose.local.yml up -d} 启动后 \texttt{postgres}、\texttt{redis}、\texttt{inngest}、\texttt{soketi} 与主服务均进入可用状态，PostgreSQL 初始化阶段会通过 \path{init.sql} 额外创建 Inngest 使用的数据库，\texttt{bun install} 完成依赖安装并触发 Prisma Client 生成，\texttt{bunx prisma migrate deploy} 应用全部 15 个数据库迁移，\texttt{bunx prisma db seed} 完成种子数据初始化，\texttt{bun run build} 生产构建通过，构建输出中可见 \path{/problemset}、\path{/problems/[problemId]}、\path{/dashboard} 以及后台管理相关核心路由均已参与构建。图~\ref{fig:local-dev-env} 给出了运行界面与开发终端状态，可作为本地演示环境正常工作的证据。
 
 \section{关键实现结果汇总}
 
@@ -620,7 +620,7 @@ Diff 对比视图 & 当 \texttt{optimizedCode} 非空时启用，在普通与 Di
 
 判题入口 \texttt{judge} 位于 \path{src/app/actions/judge.ts}，在接收请求后先完成参数校验并创建状态为 \texttt{QD} 的提交记录，随后通过 \texttt{inngest.send} 投递事件，\path{src/inngest/functions/process-submission.ts} 订阅该事件并异步执行容器准备、编译与逐用例运行流程，底层执行由 \path{src/lib/judge-runtime.ts} 提供。该实现将请求受理与耗时执行解耦，前端可先获得已受理状态，再随着后台处理持续看到状态推进。
 
-与主判题不同，\texttt{CodeAnalysis} 使用独立状态枚举，例如 \texttt{QUEUED}、\texttt{PROCESSING}，由 \texttt{analyzeCode} 在客观判题完成后异步触发，体现主结果确定、解释层后置的拆分方式。判题状态推送与语言服务同样基于 WebSocket 长连接，但二者在频道与事件语义上保持分离：前者通过 \texttt{problem-\{id\}} 与 \texttt{submission-\{id\}} 频道推送提交状态刷新，后者用于编辑期 LSP 会话。
+与主判题不同，\texttt{CodeAnalysis} 使用独立状态枚举，例如 \texttt{QUEUED}、\texttt{PROCESSING}，由 \texttt{analyzeCode} 在提交受理后异步触发，体现主结果裁决与解释层分析相互拆分的方式。判题状态推送与语言服务同样基于 WebSocket 长连接，但二者在频道与事件语义上保持分离：前者通过 \texttt{problem-\{id\}} 与 \texttt{submission-\{id\}} 频道推送提交状态刷新，后者用于编辑期 LSP 会话。
 
 在课程化能力方面，本文已完成课程、选课关系、作业及作业题目关联等核心数据结构，并将作业上下文与提交记录建立关联。基于这一结构，教师端可进行课程维护、学生管理、作业创建与发布及统计查看，学生端也可在课程语境下进入作业并完成提交。现有题库、提交、判题轨迹与 AI 分析已经形成可运行的数据链条。
 
