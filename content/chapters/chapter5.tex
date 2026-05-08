@@ -216,13 +216,13 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
 
 用户点击提交按钮之后，系统会先检查用户的登录状态、确认题目和测试用例是否存在，同时还要核对对应语言的 Docker 配置是不是完整，检查都没问题后，\path{src/app/actions/judge.ts} 会生成一条状态为 \texttt{QD} 的 Submission 记录，再把提交 id 通过事件 \texttt{submissions/create} 发送给 Inngest。到这一步 HTTP 请求就可以返回结果了，接下来的编译和运行都交给异步链路处理，另外，提交入口还会把当前界面使用的语言传给 AI 分析环节，这样反馈里的 \texttt{feedback} 字段就能和用户的语言环境保持统一。
 
-先创建 Submission 记录再进入编译运行，可以确保用户每次提交都有稳定记录，前端也能立即展示。后续异步链路中的编译失败、运行失败或容器调用失败等信息，都会统一回写到同一条记录中，状态从 \texttt{QD}、\texttt{CP}、\texttt{RU} 到最终状态持续更新，便于问题排查和复盘。
+先把 Submission 记录建好，再进入编译运行这一步，能保证用户每一次提交都能留下稳定的记录，前端页面也能立刻展示提交内容。之后不管是异步链路里出现编译出错、运行出错，还是容器调用出错，各类报错信息都会统一回写到这同一条记录里，状态会从 \texttt{QD}、\texttt{CP}、\texttt{RU} 一直更新到最终状态，方便后续排查问题和复盘。
 
-系统同时维护提交级状态与判题轨迹状态：\texttt{Submission.status} 用于前端展示与筛选，\texttt{Judge.status} 和 \texttt{JudgeRun.status} 负责记录编译及每个测试用例的执行细节，两者通过统一映射保持一致。状态变更会通过广播同步推送到 problem 和 submission 频道，前端监听后刷新提交列表与详情页，实现异步执行期间的连续更新。
+系统同时维护两种状态，一种是提交级状态，另一种是判题轨迹状态：\texttt{Submission.status} 主要用来给前端展示和筛选，\texttt{Judge.status} 和 \texttt{JudgeRun.status} 则负责记下编译过程，还有每个测试用例的执行细节，这两部分会通过统一映射保持状态一致。状态发生变化的时候，会通过广播推送到 problem 频道和 submission 频道，前端监听到变化后就会刷新提交列表和详情页，做到异步执行过程里信息可以连续更新。
 
 \subsection{编译流程实现}
 
-编译阶段由 \path{src/inngest/functions/process-submission.ts} 调用 \path{src/lib/judge-runtime.ts} 中的运行时封装完成。函数先将 Submission 状态更新为“编译中”，再根据语言类型生成编译命令。本文中，C 和 C++ 分别通过 \texttt{gcc -O2} 和 \texttt{g++ -O2} 编译为 \texttt{main}。若编译失败，错误信息写入 \texttt{Submission.message} 和 \texttt{Judge.compileOutput}，状态更新为 Compilation Error。编译器标准错误流被保存后，前端详情页将其渲染为 shell 片段，供学生查看语法或链接错误。
+编译阶段是由 \path{src/inngest/functions/process-submission.ts} 调用 \path{src/lib/judge-runtime.ts} 里封装好的运行时来完成的。调用的函数会先把 Submission 的状态改成“编译中”，之后再按照提交代码的语言类型生成对应的编译命令，本文里，C语言和C++分别会用 \texttt{gcc -O2} 和 \texttt{g++ -O2} 编译出可执行文件 \texttt{main}。若编译失败，错误信息写入 \texttt{Submission.message} 和 \texttt{Judge.compileOutput}，状态更新为 Compilation Error。编译器标准错误流被保存后，前端详情页将其渲染为 shell 片段，供学生查看语法或链接错误。
 
 \subsection{运行与用例判定实现}
 
