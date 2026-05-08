@@ -254,21 +254,21 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
 \begin{longtable}{P{0.18\textwidth}P{0.34\textwidth}P{0.40\textwidth}}
 \caption{判题异常分类与学生可见反馈策略}\\
 \toprule
-异常类别 & 典型诱因 & 反馈策略 \\
+异常类型 & 常见原因 & 反馈策略 \\
 \midrule
 \endfirsthead
 \multicolumn{3}{c}{续表\thetable}\\
 \toprule
-异常类别 & 典型诱因 & 反馈策略 \\
+异常类型 & 常见原因 & 反馈策略 \\
 \midrule
 \endhead
 \bottomrule
 \endfoot
-编译器报错 & 语法错误、链接错误 & 返回 \texttt{CE}，展示截断后的编译器输出。 \\
-运行期错误 & 越界、除零、未定义行为触发崩溃 & 返回 \texttt{RE}，尽量保留运行期错误摘要。 \\
-资源超限 & 死循环、极端数据导致 TLE/MLE & 返回 \texttt{TLE}/\texttt{MLE}，提示检查算法与边界。 \\
-答案不一致 & 逻辑错误、格式未按题目要求输出 & 返回 \texttt{WA}，可展示首个失败用例差异。 \\
-环境/配置故障 & Docker/镜像/数据缺失、远程连接失败 & 返回 \texttt{SE}，提示管理员检查部署与题目配置。 \\
+编译器报错 & 语法错误、链接错误 & 返回 \texttt{CE}，放出截断之后的编译器输出。 \\
+运行阶段错误 & 越界、除零、未定义行为引发崩溃 & 返回 \texttt{RE}，尽量留下运行期错误的核心信息。 \\
+资源超出限制 & 死循环、极端数据引发 \texttt{TLE}/\texttt{MLE} & 返回 \texttt{TLE}/\texttt{MLE}，提醒检查算法和边界情况。 \\
+答案对不上 & 逻辑出错、格式没按题目要求输出 & 返回 \texttt{WA}，可以放出第一个失败用例的差异。 \\
+环境/配置出错 & Docker/镜像/数据缺失、远程连接失败 & 返回 \texttt{SE}，提醒管理员检查部署和题目配置。 \\
 \bottomrule
 \end{longtable}
 \endgroup
