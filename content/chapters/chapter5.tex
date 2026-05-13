@@ -323,9 +323,7 @@ AI 子系统的失败兜底分为三层：第一，所有 AI 调用以 Server Ac
 
 \subsection{Monaco 编辑器与基于 LSP 的 IDE 级语言服务}
 
-本节会结合具体实现代码，来说明编辑器功能与语言服务链路的实际落地方式，重点聚焦那些和编码体验直接相关的关键模块。
-
-许多传统在线评测系统仍采用轻量文本框或简化编辑器，常见功能止步于关键字着色与基础缩进。对入门学生而言，这类编辑器在拼写错误、漏写分号、括号不匹配、类型不匹配等高频问题上缺乏即时反馈，学生往往只能依赖编译器输出的大量信息自行定位，在题目规模变大或模板宏较多时，这种反馈链路会显著拉长试错周期。工程实现策略是将浏览器端编辑体验尽量对齐本地 IDE：以微软 Monaco Editor 作为代码编辑内核\cite{monacoeditorrepo}，并通过 Language Server Protocol 即 LSP 与独立的 C/C++ 语言服务器通信，使补全、诊断、悬停提示、签名帮助等功能以标准化方式进入 Web 工作区\cite{lsp2024spec,monacolanguageclientrepo}。
+本节说明编辑器与语言服务链路的实现要点；编辑体验动机、与判题职责分离及工作区约束见第二、三、四章。
 
 \noindent 前端依赖与编辑器基础能力。题目求解页的实现栈以 \texttt{@monaco-editor/react} 与 \texttt{monaco-editor} 为核心，并配合 \texttt{monaco-languageclient}、\texttt{vscode-languageclient} 与 \texttt{vscode-ws-jsonrpc} 将 LSP 的 JSON-RPC 消息映射到浏览器 \texttt{WebSocket} 传输层\cite{monacolanguageclientrepo}。编辑器默认选项在 \path{src/config/editor.ts} 中集中配置，启用 ligatures、括号配对着色、缩进参考线、粘性滚动、平滑滚动与自动换行等特性，使长时间读码与改码的视觉负担更低。主题方面，工程使用 Shiki 高亮器并通过 \texttt{@shikijs/monaco} 将配色注册到 Monaco，从而使代码区与站点深浅色主题保持一致，与图~\ref{fig:dark-theme-workspace} 所示工作区观感一致。
 
