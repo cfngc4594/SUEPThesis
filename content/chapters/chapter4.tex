@@ -61,11 +61,11 @@
 \endhead
 \bottomrule
 \endfoot
-提交服务 & 创建 Submission 记录、校验权限、接收源代码 & 面向用户请求入口，优先保证快速返回与状态可查询。 \\
-事件/队列层 & 缓冲任务、传递判题事件、削峰填谷 & 负责把同步请求转换为异步任务，为独立 worker 提供消费入口。 \\
-判题 worker & 拉取任务并完成编译、运行、用例判定 & 以独立执行节点形式运行，便于水平扩展和资源隔离。 \\
-状态存储层 & 持久化 Submission、Judge、JudgeRun 等记录 & 保存提交级、判题级和用例级的全过程状态，便于复盘与展示。 \\
-实时回传组件 & 把状态变化推送到前端页面 & 通过发布订阅机制减少前端轮询开销，提升用户对判题进度的可感知性。 \\
+提交服务 & 建 Submission、鉴权、收源码 & 入口层：快返回、状态可查。 \\
+事件/队列层 & 缓冲与投递判题事件 & 同步转异步，供 worker 消费。 \\
+判题 worker & 编译、运行、逐用例判定 & 独立进程/节点，易扩缩与隔离。 \\
+状态存储层 & 持久化 Submission/Judge/JudgeRun & 提交/判题/用例分层留存。 \\
+实时回传组件 & 状态变更推送前端 & Pub/Sub 等，减轮询、显进度。 \\
 \bottomrule
 \end{longtable}
 \endgroup
@@ -90,11 +90,11 @@
 \endhead
 \bottomrule
 \endfoot
-受理阶段 & \texttt{PD}、\texttt{QD} & 提交记录创建成功，任务尚未完成编译 & 先把已受理结果返回给用户，也给后续排队和异步执行留出过渡状态。 \\
-编译阶段 & \texttt{CP}、\texttt{CE}、\texttt{CS} & worker 拉取任务并开始编译，或编译完成/失败 & 显式区分语法层错误与运行层错误，便于快速定位问题处于哪一阶段。 \\
-运行阶段 & \texttt{RU}、\texttt{WA}、\texttt{RE}、\texttt{TLE}、\texttt{MLE} & 编译成功后进入受控运行环境并逐用例执行 & 让系统能够基于不同失败类型给出更细粒度结果，也便于统计错误分布。 \\
-完成阶段 & \texttt{AC} & 全部测试用例通过且资源统计完成 & 形成最终正确结果，并保留时间、内存等摘要信息供展示和分析使用。 \\
-异常阶段 & \texttt{SE} & 题目缺失、配置缺失、容器调用失败等系统级异常 & 把业务错误与系统环境异常分离，避免所有失败都被混淆为普通判题错误。 \\
+受理阶段 & \texttt{PD}、\texttt{QD} & 记录已建，尚未编译 & 先受理，再排队/异步执行。 \\
+编译阶段 & \texttt{CP}、\texttt{CE}、\texttt{CS} & worker 拉取后编译开始或结束 & 区分 CE 与运行期错误。 \\
+运行阶段 & \texttt{RU}、\texttt{WA}、\texttt{RE}、\texttt{TLE}、\texttt{MLE} & 受控环境逐用例执行 & 细粒度终态与统计。 \\
+完成阶段 & \texttt{AC} & 全用例通过并完成资源汇总 & 终态正确 + 时空摘要。 \\
+异常阶段 & \texttt{SE} & 题/数据/容器/配置等系统故障 & 与 WA/CE 等业务失败区分。 \\
 \bottomrule
 \end{longtable}
 \endgroup
@@ -130,10 +130,10 @@
 \endhead
 \bottomrule
 \endfoot
-传统单体式判题 & 业务服务与判题逻辑集中部署，强调题库、提交和结果输出等基础能力\cite{tran2013uoj} & 实现简单，部署成本较低，适合验证教学型 OJ 的基础流程 & 高峰期容易阻塞业务请求，环境隔离与横向扩展能力较弱，适合小规模教学场景。 \\
-无服务器判题 & 通过 API Gateway、消息队列、函数计算和托管存储组织按需执行链路\cite{alemu2023serverless} & 对突发流量具有较好弹性，空闲资源成本低，天然契合事件驱动处理 & 存在冷启动、执行时长限制、运行镜像封装与调试复杂度等问题，更适合无状态、短时任务明显的场景。 \\
-容器化 worker 判题 & 由提交服务、队列/事件层与独立判题 worker 组合而成，在容器中编译运行用户程序 & 环境可控性强，便于支持 C/C++ 编译工具链与细粒度资源限制，本地调试和复现实验更直接 & 需要自行维护镜像、worker 生命周期和扩缩策略，自动弹性程度通常弱于纯无服务器方案。 \\
-客户端/自学型评测 & 将部分评测过程放到客户端执行，强调作业迁移与自学材料复用\cite{ihantola2011automated} & 有利于学习材料跨环境迁移，降低服务器侧沙箱压力，适合自由练习与自学支持 & 结果更容易被伪造，不适合直接用于正式评分，更适合形成性练习场景。 \\
+传统单体式判题 & 业务与判题同进程部署\cite{tran2013uoj} & 实现快、成本低 & 高峰易阻塞；隔离与横向扩展弱。 \\
+无服务器判题 & API 网关 + 队列 + 函数计算等按需链路\cite{alemu2023serverless} & 弹性好、空闲成本低、事件驱动自然 & 冷启动、时长与镜像约束；调试成本偏高。 \\
+容器化 worker 判题 & 提交服务 + 队列 + 独立 worker，容器内编译运行 & 环境一致、C/C++ 易控资源、易本地复现 & 镜像与 worker 生命周期需自运维。 \\
+客户端/自学型评测 & 部分评测在客户端\cite{ihantola2011automated} & 材料可迁移、降服务端压力 & 结果可信度低，不宜作正式评分主依据。 \\
 \bottomrule
 \end{longtable}
 \endgroup
@@ -157,6 +157,136 @@
 除了功能聚合，工作区还需要解决状态连续性问题。编程任务往往不是一次打开页面就能完成，用户可能会刷新、切题或过一段时间再回来继续写。因此，布局状态、语言偏好和代码草稿都需要在前端保留下来。只有这样，平台才更接近一个能持续承载编程任务的工作台，而不只是一次性的网页表单。
 
 AI 进入编辑阶段后，前端交互还需要承担教学边界治理职责。若系统允许用户在写代码过程中直接请求复杂度分析、优化结果或上下文问答，那么前端不应仅负责把模型结果简单渲染出来，而应进一步帮助用户区分当前原始代码、模型生成代码以及最终准备提交的代码三者之间的关系。因此，本文在总体设计上强调显式工具栏操作、差异对比视图和问答面板上下文绑定等机制，使 AI 支持以可见、可比较、可审阅的方式嵌入工作区，而不以隐藏流程或静默覆盖形式破坏学生对代码过程的掌控。
+
+\subsection{首页入口与工作区信息架构}
+
+平台前端整体采用面向任务求解的一体化工作区组织方式：在用户进入具体题目之前，由首页承载平台定位、语言/主题切换与功能导航，进入题目页后，则将题面描述、代码编辑、提交记录、题解、测试用例、提交详情以及 AI 助手面板组合到统一视图，使学生无需在多个独立页面之间来回切换即可完成读题、编码、提交、查看判题与获取反馈这一完整过程。这种工作区式交互更符合程序设计训练的使用习惯，LSP 诊断、AI 助手面板与 Diff 视图等功能也应挂载在同一工作区内，学生编码时不必跳到其他页面去触发。
+
+首页采用与工作区相互呼应的两层组织：移动端保持纵向单列、保证核心入口可达，桌面端则以卡片形式概括移动端适配、Docker 运行环境与语言服务等关键功能，便于新用户在做题前先建立平台功能的整体认知。上述信息架构在第五章以界面截图形式给出对应实现证据。
+
+\subsection{国际化、多语言与主题一致性（设计约束）}
+
+平台的多语言支持由数据层与界面层共同构成：数据层借助 \texttt{ProblemLocalization} 按 \texttt{locale} 组织题目标题、题面描述与题解说明，使同一道题目在不同语言下呈现一致的题面结构；界面层则需要系统化的国际化 i18n 组织来承载导航、按钮、错误提示、判题状态解释、AI 面板标题等高频文本，避免出现题面与界面控件语言不一致的割裂体验。除语言外，工作区应支持深浅色主题切换，并使普通页面、代码编辑器与差异对比视图在主题上协同一致，避免题面区域、代码区域与 Diff 视图在切换主题后出现明显割裂，以满足长时间阅读与对比代码的基本需求。
+
+\subsection{响应式布局与多终端适配（设计约束）}
+
+除桌面主场景外，平台应在平板与移动端提供退化布局策略：根据视口宽度切换交互组织，桌面端保留多面板并列与可折叠侧栏，移动端将侧边内容收纳到抽屉面板，避免窄屏固定多栏造成拥挤。平台以桌面编程训练为主，但小屏设备仍应能完成核心操作链路。
+
+\section{数据库设计}
+
+\subsection{核心实体与关系设计}
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{\linewidth}{!}{\input{figures/core_er_diagram.tex}}
+  \caption{核心数据表实体关系示意}
+  \label{fig:ch4-er}
+\end{figure}
+
+图~\ref{fig:ch4-er} 概括了本系统核心数据实体之间的关系。User 实体通过角色字段区分管理员、教师与学生，用于确定题目管理权限与后台访问范围。学生对同一个 Problem 可产生多条 Submission。每条 Submission 对应一条 Judge 记录用于保存判题阶段轨迹，再由多条 JudgeRun 记录逐用例执行结果。CodeAnalysis 与 Submission 一对一关联，用于保存 AI 辅助分析结果。
+
+\subsection{题目内容与模板数据设计}
+
+Problem 表中的 \texttt{displayId} 用于题号展示，\texttt{timeLimit} 和 \texttt{memoryLimit} 用于单次提交资源限制。ProblemLocalization 表通过 \texttt{problemId + locale + type} 组织多语言题目标题、题面与题解文本。Template 表按 \texttt{problemId + language} 保存模板代码，支撑用户进入题目页后按语言加载初始代码。
+
+\subsection{提交、判题轨迹与分析结果设计}
+
+根据判题流程，系统需同时记录提交状态、逐用例执行细节以及 AI 分析结果。为此，数据模型采用提交级、判题级、用例级三层结构，分别对应 Submission、Judge、JudgeRun 三类记录。
+
+\begingroup
+\small
+\setlength{\LTleft}{\fill}
+\setlength{\LTright}{\fill}
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{P{0.15\textwidth}P{0.29\textwidth}P{0.44\textwidth}}
+\caption{核心数据表字段设计汇总}\\
+\toprule
+数据表 & 关键字段 & 主要用途 \\
+\midrule
+\endfirsthead
+\multicolumn{3}{c}{续表\thetable}\\
+\toprule
+数据表 & 关键字段 & 主要用途 \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+User & id, email, password, role, image & 账号与角色；鉴权、权限、提交归属。 \\
+Problem & id, displayId, difficulty, isPublished, timeLimit, memoryLimit, isTrim & 题目元数据与评测资源上限。 \\
+Problem\allowbreak Localization & problemId, locale, type, content & 多语言题面/题解等文本。 \\
+Template & problemId, language, content & 各语言初始模板代码。 \\
+Submission & id, language, content, status, message, timeUsage, memoryUsage, userId, problemId & 提交级：源码、状态摘要、资源开销。 \\
+Judge & id, submissionId, status, startTime, endTime, compileOutput & 判题级：阶段轨迹与编译输出。 \\
+JudgeRun & id, judgeId, testcaseId, status, timeUsage, memoryUsage, stdin, stdout, stderr & 用例级：I/O 与单用例判定。 \\
+Testcase & id, expectedOutput, problemId & 标答与题目归属。 \\
+Testcase\allowbreak Input & id, testcaseId, index, name, value & 有序输入项，组装 stdin。 \\
+Code\allowbreak Analysis & id, submissionId, status, timeComplexity, spaceComplexity, overallScore, feedback & AI 结构化分析；与客观判题分离。 \\
+\bottomrule
+\end{longtable}
+\endgroup
+
+\begingroup
+\small
+\setlength{\LTleft}{\fill}
+\setlength{\LTright}{\fill}
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{P{0.10\textwidth}P{0.20\textwidth}P{0.56\textwidth}}
+\caption{Submission 状态码及含义说明}\\
+\toprule
+状态码 & 含义 & 触发阶段/说明 \\
+\midrule
+\endfirsthead
+\multicolumn{3}{c}{续表\thetable}\\
+\toprule
+状态码 & 含义 & 触发阶段/说明 \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+PD & Pending & 记录已建，未进编译。 \\
+QD & Queued & 已持久化，待异步拉取。 \\
+CP & Compiling & 编译中。 \\
+CE & Compilation Error & 编译失败；错误入 \texttt{message}。 \\
+CS & Compilation Success & 编译成功过渡态。 \\
+RU & Running & 逐用例运行中。 \\
+AC & Accepted & 全用例通过。 \\
+WA & Wrong Answer & 输出与标答不符。 \\
+RE & Runtime Error & 运行期崩溃/非法操作。 \\
+TLE & Time Limit Exceeded & 超时。 \\
+MLE & Memory Limit Exceeded & 超内存上限。 \\
+SE & System Error & 环境/配置/编排类故障。 \\
+\bottomrule
+\end{longtable}
+\endgroup
+
+Submission 表保存语言类型、源代码、判题状态、错误信息与资源消耗。Testcase 和 TestcaseInput 保存题目用例及输入项。Judge 与 JudgeRun 分别记录提交级判题轨迹和用例级执行细节。分层记录方式既支持列表页快速展示摘要，也支持详情页定位首个失败用例。
+
+\begingroup
+\small
+\setlength{\LTleft}{\fill}
+\setlength{\LTright}{\fill}
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{P{0.22\textwidth}P{0.24\textwidth}P{0.42\textwidth}}
+\caption{核心数据约束与设计意图}\\
+\toprule
+约束对象 & 约束形式 & 设计意图 \\
+\midrule
+\endfirsthead
+\multicolumn{3}{c}{续表\thetable}\\
+\toprule
+约束对象 & 约束形式 & 设计意图 \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+ProblemLocalization & \texttt{problemId + locale + type} PK & 同题同语种同类型唯一。 \\
+Template & \texttt{problemId + language} PK & 同题同语言唯一模板。 \\
+CodeAnalysis & \texttt{submissionId} 唯一 & 一提交一主分析记录。 \\
+外键级联删除 & 关联 Problem/Submission 的级联 & 删题/删提交时清理从表，防孤儿数据。 \\
+提交和用例分层记录 & Submission/Judge/JudgeRun & 列表摘要 + 详情用例粒度。 \\
+\bottomrule
+\end{longtable}
+\endgroup
 
 \section{部署与安全设计}
 

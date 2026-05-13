@@ -58,125 +58,11 @@
 
 \FloatBarrier
 
-\section{核心数据模型}
+\section{数据模型落库与 ORM 实现}
 
-\begin{figure}[htbp]
-  \centering
-  \resizebox{\linewidth}{!}{\input{figures/core_er_diagram.tex}}
-  \caption{核心数据表实体关系示意}
-  \label{fig:ch5-er}
-\end{figure}
+第四章已给出数据库设计与字段语义，本章聚焦工程实现。系统通过 Prisma 将 \texttt{User}、\texttt{Problem}、\texttt{Submission}、\texttt{Judge}、\texttt{JudgeRun}、\texttt{CodeAnalysis} 等实体映射为类型安全的数据访问接口，并通过迁移机制管理表结构演进。
 
-图~\ref{fig:ch5-er} 概括了本系统的核心数据表之间的关系，User 实体的角色字段用于区分管理员、教师与学生身份，用于确定题目管理权限和后台访问范围。学生对同一个 Problem 可以提交多次代码，产生多条 Submission 记录，Problem 本身也与 Testcase 相关联。每条 Submission 会有一条 Judge 记录用于保存最终判题结果，再由多条 JudgeRun 单独记录每条测试用例的执行结果，CodeAnalysis 则是 Submission 的 AI 辅助分析结果。
-
-\subsection{题目内容与模板数据设计}
-
-Problem 表中的 displayId 用于题号展示，timeLimit 和 memoryLimit 用于单次提交的资源限制。
-
-ProblemLocalization 表可以通过 problemId、locale、type 获取不同语言版本的题目标题、题面、题解文本。
-
-学生在编辑器中答题时，编辑器会根据 problemId 和 language 从 Template 表中获取对应语言的模版代码。
-
-\subsection{提交、判题轨迹与分析结果设计}
-
-根据判题流程，本系统需要记录每一次提交的判题状态、测试用例执行结果和 AI 分析结果，本小节会以表的形式汇总各个核心数据表的字段设计，并结合表中字段说明 \texttt{Submission} 状态码的取值含义以及三者之间的关系。
-
-\begingroup
-\small
-\setlength{\LTleft}{\fill}
-\setlength{\LTright}{\fill}
-\setlength{\tabcolsep}{3pt}
-\begin{longtable}{P{0.15\textwidth}P{0.29\textwidth}P{0.44\textwidth}}
-\caption{核心数据表字段设计汇总}\\
-\toprule
-数据表 & 关键字段 & 主要用途 \\
-\midrule
-\endfirsthead
-\multicolumn{3}{c}{续表\thetable}\\
-\toprule
-数据表 & 关键字段 & 主要用途 \\
-\midrule
-\endhead
-\bottomrule
-\endfoot
-User & id, email, password, role, image & 这一表主要把账号和角色这些核心信息落下来，后续在认证鉴权、权限判断、提交归属追踪时都会直接用到。 \\
-Problem & id, displayId, difficulty, isPublished, timeLimit, memoryLimit, isTrim & 描述题目的基础约束与评测配置，是题库管理和判题流程的核心实体。 \\
-Problem\allowbreak Localization & problemId, locale, type, content & 按语言和内容类型存储题目标题、题面描述与题解等文本信息，支持多语言展示。 \\
-Template & problemId, language, content & 保存不同编程语言对应的模板代码，供用户进入题目页后直接加载。 \\
-Submission & id, language, content, status, message, timeUsage, memoryUsage, userId, problemId & 该表按提交维度保存代码内容、判题状态、错误信息和资源消耗数据，判题核心流程的多数状态流转都围绕它展开。 \\
-Judge & id, submissionId, status, startTime, endTime, compileOutput & 这里会把一次提交在判题阶段的关键轨迹记录下来，编译输出也会被完整保留，方便后面按提交粒度去回溯全过程。 \\
-JudgeRun & id, judgeId, testcaseId, status, timeUsage, memoryUsage, stdin, stdout, stderr & 保存逐用例执行结果与输入输出信息，支撑失败定位与详情展示。 \\
-Testcase & id, expectedOutput, problemId & 保存标准测试用例及其期望输出，为程序运行结果判定提供依据。 \\
-Testcase\allowbreak Input & id, testcaseId, index, name, value & 该表用于保存测试用例的有序输入项，运行阶段会按这个顺序去组装标准输入流。 \\
-Code\allowbreak Analysis & id, submissionId, status, timeComplexity, spaceComplexity, overallScore, feedback & 用于保存 AI 对提交代码给出的结构化分析结果，同时与客观判题结果分开存储，避免相互干扰。 \\
-\bottomrule
-\end{longtable}
-\endgroup
-
-\begingroup
-\small
-\setlength{\LTleft}{\fill}
-\setlength{\LTright}{\fill}
-\setlength{\tabcolsep}{3pt}
-\begin{longtable}{P{0.10\textwidth}P{0.20\textwidth}P{0.56\textwidth}}
-\caption{Submission 状态码及含义说明}\\
-\toprule
-状态码 & 含义 & 触发阶段/说明 \\
-\midrule
-\endfirsthead
-\multicolumn{3}{c}{续表\thetable}\\
-\toprule
-状态码 & 含义 & 触发阶段/说明 \\
-\midrule
-\endhead
-\bottomrule
-\endfoot
-PD & Pending & 提交记录已创建，处于判题流程起点，尚未进入编译阶段。 \\
-QD & Queued & 表示这次提交已经被系统接收并完成持久化，后面会由事件函数异步拉取，继续进入编译和运行流程。 \\
-CP & Compiling & 代码已进入编译阶段，系统正在调用对应语言编译器进行构建。 \\
-CE & Compilation Error & 编译失败，系统会将编译器错误输出写回 Submission.message 供前端展示。 \\
-CS & Compilation Success & 编译成功的中间状态，通常会很快继续流转到运行阶段。 \\
-RU & Running & 程序正在受控容器环境中执行测试用例。 \\
-AC & Accepted & 所有测试用例均通过，提交被判定为正确结果。 \\
-WA & Wrong Answer & 程序可正常运行，但输出结果与标准答案不一致。 \\
-RE & Runtime Error & 程序在运行阶段异常退出或发生非法操作。 \\
-TLE & Time Limit Exceeded & 说明程序在给定时限内没有跑完，常见原因一般是死循环，或者时间复杂度偏高。 \\
-MLE & Memory Limit Exceeded & 程序运行期间内存占用超过题目限定阈值。 \\
-SE & System Error & 系统环境、配置或流程执行出现异常，例如题目缺失、Docker 配置缺失或容器调用失败。 \\
-\bottomrule
-\end{longtable}
-\endgroup
-
-Submission 表存了语言类型、源代码、最终判题状态、报错信息、用了多少时间、占了多少内存这些内容。Testcase 和 TestcaseInput 表存着一道题所有的测试用例，Judge 跟 JudgeRun 表则分别记录了每次提交的判题过程，还有每个测试用例最后跑出来的结果。
-
-要拆成 Submission、Judge、JudgeRun 这三层，是为了把提交整体的状态，和单个测试用例的细节分开互不影响，这样就能在列表页先展示提交的概况，点进详情页再看具体是哪个测试用例让判题不通过。CodeAnalysis 表是用来存 AI 辅助分析的结果的，它靠 submissionId 和 Submission 表建立一对一的关联，还用单独的状态字段追踪分析任务现在走到哪个阶段了，这样一来，AI 分析就能放在后台异步跑，不会卡住主判题的流程，分析结果也能和判题结果分开存在不同的表里。
-
-\begingroup
-\small
-\setlength{\LTleft}{\fill}
-\setlength{\LTright}{\fill}
-\setlength{\tabcolsep}{3pt}
-\begin{longtable}{P{0.22\textwidth}P{0.24\textwidth}P{0.42\textwidth}}
-\caption{核心数据约束与设计意图}\\
-\toprule
-约束对象 & 约束形式 & 设计意图 \\
-\midrule
-\endfirsthead
-\multicolumn{3}{c}{续表\thetable}\\
-\toprule
-约束对象 & 约束形式 & 设计意图 \\
-\midrule
-\endhead
-\bottomrule
-\endfoot
-ProblemLocalization & \texttt{problemId + locale + type} 复合主键 & 能保证同一道题的同一种内容类型，在同一种语言下只会有唯一版本，避免题面和题解的文本出现冲突。 \\
-Template & \texttt{problemId + language} 复合主键 & 能保证每道题目在每种语言下都只存一份模板代码，方便前端切换语言的时候，直接加载对应的初始代码。 \\
-CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应一条主分析记录，不会出现多次分析结果互相覆盖、或者重复展示的问题。 \\
-外键级联删除 & 多个实体对 Problem、Submission 的级联关系 & 理清多个实体对 Problem、Submission 的级联关系，当题目或者提交被删除之后，关联的本地化文本、模板、判题轨迹还有分析记录都会跟着被清理，能减少没用的孤立数据残留下来。 \\
-提交和用例分层记录 & Submission、Judge、JudgeRun 分层设计 & 既保存了提交级的摘要信息，又保留了用例级的细节内容，可以给详情展示、错误复盘还有统计工作提供粒度更细的数据基础。 \\
-\bottomrule
-\end{longtable}
-\endgroup
+在实现层面，\texttt{schema.prisma} 明确定义了实体关系、复合主键与唯一约束，Server Action 与 Inngest worker 统一围绕 \texttt{submissionId} 写入与更新判题轨迹。由于数据模型设计与实现链路一致，业务侧可以在提交受理、异步判题、结果回写、AI 分析四个阶段共享同一主键上下文，避免状态漂移或重复写入。
 
 \section{题库与题目组织}
 
@@ -264,11 +150,11 @@ CodeAnalysis & \texttt{submissionId} 唯一约束 & 保证一次提交只对应�
 \endhead
 \bottomrule
 \endfoot
-编译器报错 & 语法错误、链接错误 & 返回 \texttt{CE}，放出截断之后的编译器输出。 \\
-运行阶段错误 & 越界、除零、未定义行为引发崩溃 & 返回 \texttt{RE}，尽量留下运行期错误的核心信息。 \\
-资源超出限制 & 死循环、极端数据引发 \texttt{TLE}/\texttt{MLE} & 返回 \texttt{TLE}/\texttt{MLE}，提醒检查算法和边界情况。 \\
-答案对不上 & 逻辑出错、格式没按题目要求输出 & 返回 \texttt{WA}，可以放出第一个失败用例的差异。 \\
-环境/配置出错 & Docker/镜像/数据缺失、远程连接失败 & 返回 \texttt{SE}，提醒管理员检查部署和题目配置。 \\
+编译器报错 & 语法/链接错误 & \texttt{CE}；截断展示编译输出。 \\
+运行阶段错误 & 越界、除零等崩溃 & \texttt{RE}；保留关键运行期信息。 \\
+资源超出限制 & 死循环或极端数据 & \texttt{TLE}/\texttt{MLE}。 \\
+答案对不上 & 逻辑或格式不符 & \texttt{WA}；可展示首失败用例差异。 \\
+环境/配置出错 & 镜像/数据/连接缺失 & \texttt{SE}；提示检查部署与题目配置。 \\
 \bottomrule
 \end{longtable}
 \endgroup
@@ -330,15 +216,15 @@ AI 辅助子系统独立于主判题链路，在代码提交和编辑两个时�
 \endhead
 \bottomrule
 \endfoot
-\texttt{status} & \texttt{QUEUED / PROCESSING / COMPLETED / FAILED} & 跟踪分析任务本身的执行状态，使 AI 流程能够独立于判题状态被观察与管理。 \\
-\texttt{timeComplexity} & 枚举化复杂度取值 & 对学生代码的时间复杂度进行结构化记录，便于页面直接展示。 \\
-\texttt{spaceComplexity} & 枚举化复杂度取值 & 保存空间复杂度分析结果，与时间复杂度共同构成算法层面的摘要信息。 \\
-\texttt{overallScore} & 0--100 整数 & 对代码整体质量进行综合评价，用于形成直观的总览分值。 \\
-\texttt{styleScore} & 0--100 整数 & 从命名、格式和结构整洁度等角度评价代码风格。 \\
-\texttt{readability}\allowbreak\texttt{Score} & 0--100 整数 & 评价代码是否便于阅读和理解，突出教学反馈价值。 \\
-\texttt{efficiencyScore} & 0--100 整数 & 评价算法与实现层面的效率水平，补充复杂度标签之外的解释信息。 \\
-\texttt{correctness}\allowbreak\texttt{Score} & 0--100 整数 & 在不替代客观判题的前提下，给出模型对逻辑正确性的辅助判断。 \\
-\texttt{feedback} & 长文本 & 保存面向学生的解释性反馈、问题定位和改进方向，是 AI 模块最直接的教学输出。 \\
+\texttt{status} & \texttt{QUEUED / PROCESSING / COMPLETED / FAILED} & 分析任务状态；与判题状态独立。 \\
+\texttt{timeComplexity} & 枚举复杂度 & 时间复杂度标签。 \\
+\texttt{spaceComplexity} & 枚举复杂度 & 空间复杂度标签。 \\
+\texttt{overallScore} & 0--100 整数 & 综合分。 \\
+\texttt{styleScore} & 0--100 整数 & 代码风格分。 \\
+\texttt{readability}\allowbreak\texttt{Score} & 0--100 整数 & 可读性分。 \\
+\texttt{efficiencyScore} & 0--100 整数 & 效率分（非客观判题替代）。 \\
+\texttt{correctness}\allowbreak\texttt{Score} & 0--100 整数 & 正确性辅助分（非客观判题替代）。 \\
+\texttt{feedback} & 长文本 & 解释与改进建议。 \\
 \bottomrule
 \end{longtable}
 \endgroup
@@ -365,7 +251,7 @@ AI 辅助子系统独立于主判题链路，在代码提交和编辑两个时�
 
 AI 子系统的失败兜底分为三层：第一，所有 AI 调用以 Server Action 或独立 Route Handler 形式存在，其结果不参与 \texttt{Submission.status} 的状态裁决，即使模型不可达或返回格式错误，学生仍能获得标准的 \texttt{AC}/\texttt{WA} 等结果。第二，\texttt{analyze-code.ts} 中所有 zod 字段均为 \texttt{optional}，模型返回缺少某些维度时，仅部分字段为空，前端显示占位即可。第三，所有失败分支将状态写为 \texttt{FAILED} 并保留时间戳，配合日志可定位问题阶段。
 
-教学边界方面，本子系统遵守第三章的 AI 可控性原则：聊天面板的 system prompt 要求用用户语言回复且保持简洁；优化代码不覆盖原代码，需用户主动触发；分析结果与判题状态分离存储，阻断 AI 评分污染判题结果的可能。AI 在系统中始终扮演解释与提示的角色，而非裁判。
+教学边界方面，第三章与第四章已阐明 AI 可控性与“解释不裁决”的定位；本实现通过独立 Route Handler 与 Server Action 承载 AI 调用、\texttt{CodeAnalysis} 与 \texttt{Submission.status} 分离写入、以及优化结果不覆盖编辑器原文等方式落实上述约束。
 
 \begin{figure}[htbp]
   \centering
@@ -400,9 +286,7 @@ AI 子系统的失败兜底分为三层：第一，所有 AI 调用以 Server Ac
 
 \subsection{前端工作区组织与首页入口}
 
-平台前端整体采用面向任务求解的一体化工作区组织方式：在用户进入具体题目之前，由首页承载平台定位、语言/主题切换与功能导航，进入题目页后，则将题面描述、代码编辑、提交记录、题解、测试用例、提交详情以及 AI 助手面板组合到统一视图，见图~\ref{fig:problem-workspace}，使学生无需在多个独立页面之间来回切换即可完成读题、编码、提交、查看判题与获取反馈这一完整过程。这种工作区式交互更符合程序设计训练的使用习惯，后文涉及的 LSP 诊断、AI 助手面板与 Diff 视图等功能也都挂载在同一工作区内，学生编码时不必跳到其他页面去触发。
-
-首页采用与工作区相互呼应的两层组织：移动端保持纵向单列、保证核心入口可达，桌面端则以卡片形式概括移动端适配、Docker 运行环境与语言服务等关键功能，便于新用户在做题前先建立平台功能的整体认知。
+一体化工作区与首页信息架构的设计约束已在第四章给出；本节以界面截图展示工程落地结果，见图~\ref{fig:problem-workspace} 及图~\ref{fig:home-mobile}、图~\ref{fig:home-guide}。
 
 \begin{figure}[htbp]
   \centering
@@ -431,7 +315,7 @@ AI 子系统的失败兜底分为三层：第一，所有 AI 调用以 Server Ac
 
 \subsection{国际化、多语言与主题一致性}
 
-平台的多语言支持由数据层与界面层共同构成，数据层借助 \texttt{ProblemLocalization} 按 \texttt{locale} 组织题目标题、题面描述与题解说明，使同一道题目在不同语言下呈现一致的题面结构，界面层则需要系统化的国际化 i18n 组织来承载导航、按钮、错误提示、判题状态解释、AI 面板标题等高频文本，否则会出现题面是英文但按钮仍是中文这一类割裂体验。
+数据层与界面层的多语言及主题协同约束见第四章；本节说明具体工程实现。
 
 界面 i18n 工程实现采用 \texttt{next-intl} 与 Next.js App Router 结合：服务端组件通过 \texttt{getTranslations}/\texttt{getLocale} 读取当前语言环境下的文案，客户端组件通过 \texttt{useTranslations}/\texttt{useLocale} 绑定交互控件标签，语言偏好通过 Cookie 在请求之间保持，使刷新与导航后仍能获得一致的语言上下文\cite{nextjsdocs}。
 
@@ -460,7 +344,7 @@ AI 子系统的失败兜底分为三层：第一，所有 AI 调用以 Server Ac
 
 \subsection{响应式布局与多终端适配}
 
-前端除桌面主场景外，也实现了平板与移动端的退化布局策略，系统会根据视口宽度切换交互组织：桌面端保留多面板并列与可折叠侧栏，移动端则将侧边内容收纳到抽屉面板，避免窄屏固定多栏造成拥挤。换言之，平台虽然以桌面编程训练为主，但小屏设备仍可完成核心操作链路。
+视口分档与抽屉收纳等布局策略遵循第四章设计约束，由前端样式与组件组织在实现中落地。
 
 \subsection{运行环境与本地部署}
 

@@ -79,18 +79,18 @@ P{0.11\textwidth}
 \endhead
 \bottomrule
 \endfoot
-F-01 & 用户注册/登录 & 系统正常运行，数据库连接正常 & 输入正确账号密码并完成登录 & 成功进入系统首页或题目集页面 & 通过，可正常注册并进入 \path{/dashboard} 页面 & 本次测试使用邮箱账号注册，首个账号自动获得管理员权限 \\
-F-02 & 题目列表加载 & 系统中已存在已发布题目 & 打开 \path{/problemset} 页面 & 正常显示题号、标题、难度等信息 & 通过，可正常显示题号、标题与难度信息 & 见图~\ref{fig:ch6-problemlist} \\
-F-03 & 题目详情展示 & 题目 1000 两数之和已存在 & 点击题目进入详情页 & 正常显示题面、时限、内存限制与模板代码 & 通过，题面、示例、约束与编辑器模板代码均可正常显示 & 见图~\ref{fig:ch5-problem-detail} \\
-F-04 & 模板代码加载 & 题目已配置 C / C++ 模板 & 进入题目页并切换语言 & 自动加载对应语言模板代码 & 通过，进入题目页后可自动加载 C 语言默认模板 & 重点验证默认语言模板加载，见图~\ref{fig:ch5-problem-detail} 及图~\ref{fig:problem-workspace} \\
-F-05 & 代码提交 & 用户已登录且题目可访问 & 输入代码并点击提交 & 生成一条新的提交记录并进入判题流程 & 通过，可正常生成提交记录并返回判题状态 & 见图~\ref{fig:ch5-submit} \\
-F-06 & 提交记录查看 & 至少已完成一次代码提交 & 打开提交记录面板或提交详情面板 & 可查看提交时间、状态与部分详情信息 & 通过，可查看 AC、CE、WA、RE、TLE 等多种状态记录 & 见图~\ref{fig:ch5-submission-list} \\
-F-07 & AI 辅助反馈展示 & 提交已触发 AI 分析且分析完成 & 打开 AI 面板或提交详情中的分析区域 & 可查看复杂度、评分和反馈文本 & 通过，可正常展示雷达图、总分、复杂度与反馈文本 & 见图~\ref{fig:ch5-ai-feedback}、图~\ref{fig:ch6-ai-wa} 及图~\ref{fig:ch6-ai-readability} \\
-F-08 & 题库管理页访问 & 管理员账号可正常登录 & 访问后台题库管理页面 & 题目管理列表可正常展示 & 通过，后台题目列表与操作按钮可正常显示 & 见图~\ref{fig:ch5-problem-admin} \\
-F-09 & 语言服务连通与诊断 & 本地 Compose 已启动 \texttt{lsp-c}\allowbreak/\allowbreak\texttt{lsp-cpp} 且健康检查通过 & 打开题目页，观察工具栏 LSP 状态，在编辑器中引入明显语法/类型错误 & 状态指示进入就绪态，错误处出现诊断标记并可随修改更新 & 通过，行为与第五章图~\ref{fig:ch5-lsp-arch} 所述链路一致，界面级证据见图~\ref{fig:ch6-lsp} \\
-F-10 & AI 聊天 SSE 流式响应 & 已配置 \texttt{AI\_API\_KEY}、\allowbreak\texttt{AI\_BASE\_URL}、\allowbreak\texttt{AI\_MODEL} 三项环境变量 & 打开题目页 Bot 面板提交一条问题，同时在 Network 面板观察 \texttt{/api/chat} 请求 & 响应在生成途中即开始向页面增量写入文本，请求保持 pending 直至流结束 & 通过，回复呈现逐段浮现的形态而非整段一次性出现 \\
-F-11 & 教师课程管理 & 教师账号可正常登录且具备课程管理权限 & 进入教师端课程页面，执行课程创建、学生加入与课程详情查看 & 可完成课程创建与成员维护，课程信息正常持久化并可回显 & 通过，课程列表、成员信息与详情页均可正常显示 & 见图~\ref{fig:ch5-course-page} \\
-F-12 & 作业创建与发布 & 课程已创建且题库中存在可用题目 & 在课程下创建作业、关联题目并切换发布状态，学生端进入课程查看作业列表 & 教师端可完成作业创建/发布，学生端可看到可访问作业并提交 & 通过，作业发布后学生端可进入对应作业并完成提交 & 见图~\ref{fig:ch5-assignment-page} \\
+F-01 & 用户注册/登录 & 系统可用 & 注册/登录 & 进入系统 & 通过 & 邮箱注册；首个账号管理员 \\
+F-02 & 题目列表加载 & 已有发布题 & 打开 \path{/problemset} & 显示题号、标题、难度 & 通过 & 图~\ref{fig:ch6-problemlist} \\
+F-03 & 题目详情展示 & 题目 1000 存在 & 进入详情页 & 题面、时限、内存、模板 & 通过 & 图~\ref{fig:ch5-problem-detail} \\
+F-04 & 模板代码加载 & 已配 C/C++ 模板 & 进题页并切语言 & 自动加载对应模板 & 通过 & 图~\ref{fig:ch5-problem-detail}、\ref{fig:problem-workspace} \\
+F-05 & 代码提交 & 已登录、题可访 & 提交代码 & 生成记录并判题 & 通过 & 图~\ref{fig:ch5-submit} \\
+F-06 & 提交记录查看 & 已有提交 & 打开提交面板 & 可见时间、状态等 & 通过 & 图~\ref{fig:ch5-submission-list} \\
+F-07 & AI 辅助反馈展示 & 分析已完成 & 打开 AI/分析区 & 复杂度、分、文本 & 通过 & 图~\ref{fig:ch5-ai-feedback} 等 \\
+F-08 & 题库管理页访问 & 管理员登录 & 打开后台题库 & 列表与操作可用 & 通过 & 图~\ref{fig:ch5-problem-admin} \\
+F-09 & 语言服务连通与诊断 & LSP 容器健康 & 进题页、造语法错 & 就绪态 + 诊断更新 & 通过 & 与图~\ref{fig:ch5-lsp-arch} 一致；图~\ref{fig:ch6-lsp} \\
+F-10 & AI 聊天 SSE 流式响应 & 已配 AI 环境变量 & Bot 提问并观察 \texttt{/api/chat} & 生成期增量写入 & 通过，非整段一次返回 & \\
+F-11 & 教师课程管理 & 教师权限 & 课程 CRUD/成员 & 持久化与回显 & 通过 & 图~\ref{fig:ch5-course-page} \\
+F-12 & 作业创建与发布 & 课程与题库可用 & 创建作业、发布、学生查看 & 学生可见并可提交 & 通过 & 图~\ref{fig:ch5-assignment-page} \\
 \bottomrule
 \end{xltabular}
 \endgroup
@@ -136,11 +136,11 @@ P{0.09\textwidth}
 \endhead
 \bottomrule
 \endfoot
-J-01 & 正确程序 & 可通过全部测试用例 & AC & AC & 通过 & 标准正确样例可稳定通过，见图~\ref{fig:ch5-submit} \\
-J-02 & 编译错误程序 & 存在缺少分号等语法错误 & CE & CE & 通过 & 系统可识别语法错误并返回编译错误状态，见图~\ref{fig:ch5-submission-list} \\
-J-03 & 答案错误程序 & 可编译运行但输出与标准答案不一致 & WA & WA & 通过 & 系统可基于标准输出比对识别错误答案，见图~\ref{fig:ch5-submission-list} \\
-J-04 & 运行错误程序 & 程序运行过程中异常退出 & RE & RE & 通过 & 使用 \texttt{abort()} 样例可稳定复现运行时错误，见图~\ref{fig:ch5-submission-list} \\
-J-05 & 时间超限程序 & 程序进入死循环或长期无响应 & TLE & TLE & 通过 & 系统能够对死循环样例触发时间限制控制，见图~\ref{fig:ch5-submission-list} \\
+J-01 & 正确程序 & 全用例可过 & AC & AC & 通过 & 图~\ref{fig:ch5-submit} \\
+J-02 & 编译错误程序 & 缺分号等 & CE & CE & 通过 & 图~\ref{fig:ch5-submission-list} \\
+J-03 & 答案错误程序 & 输出与标答不符 & WA & WA & 通过 & 图~\ref{fig:ch5-submission-list} \\
+J-04 & 运行错误程序 & 运行期异常退出 & RE & RE & 通过 & \texttt{abort()}；图~\ref{fig:ch5-submission-list} \\
+J-05 & 时间超限程序 & 死循环/长期无响应 & TLE & TLE & 通过 & 图~\ref{fig:ch5-submission-list} \\
 \bottomrule
 \end{xltabular}
 \endgroup
@@ -169,10 +169,10 @@ P{0.11\textwidth}
 \endhead
 \bottomrule
 \endfoot
-E-01 & 编译错误 & 删除分号、拼写错误或使用未声明变量 & 系统返回 Compilation Error，并展示编译器错误信息 & 可说明系统能够识别语法层面的编译失败 \\
-E-02 & 答案错误 & 返回固定错误答案或忽略关键分支条件 & 系统返回 Wrong Answer，并保留对应测试结果 & 可说明系统基于标准输出比对完成结果判定 \\
-E-03 & 运行错误 & 通过 abort()、非法访问或异常退出构造运行期故障 & 系统返回 Runtime Error & 可说明系统能够识别程序运行期异常 \\
-E-04 & 时间超限 & 在核心函数中构造 while (1) \{\} 死循环 & 系统返回 Time Limit Exceeded & 可说明系统具备时间限制控制能力 \\
+E-01 & 编译错误 & 删分号/未声明变量等 & 返回 CE 并展示编译信息 & 语法层失败可识别 \\
+E-02 & 答案错误 & 固定错答或漏分支 & 返回 WA 并保留用例信息 & 标答比对可用 \\
+E-03 & 运行错误 & \texttt{abort()} 等 & 返回 RE & 运行期异常可识别 \\
+E-04 & 时间超限 & \texttt{while(1)\{\}} & 返回 TLE & 时限控制可用 \\
 \bottomrule
 \end{xltabular}
 \endgroup
@@ -207,9 +207,9 @@ P{0.14\textwidth}
 \endhead
 \bottomrule
 \endfoot
-S-01 & 进程滥用 & 在无限循环中持续 \texttt{fork()} 创建子进程 & TLE / RE & 进程无法突破容器限制，提交在时限或异常分支内终止，不影响宿主服务。 \\
-S-02 & 内存滥用 & 持续申请并写入大块内存，超过题目内存上限 & MLE & 内存约束生效，系统返回内存超限状态，未出现宿主机级别失控。 \\
-S-03 & 网络外联 & 在容器内主动发起 socket 连接公网地址 & RE & 默认网络隔离生效，外联请求失败，无法访问外部网络资源。 \\
+S-01 & 进程滥用 & 循环 \texttt{fork()} & TLE/RE & 容器内终止，未拖垮宿主 \\
+S-02 & 内存滥用 & 超大连续申请 & MLE & 内存上限生效 \\
+S-03 & 网络外联 & 容器内连公网 & RE & 默认网络隔离生效 \\
 \bottomrule
 \end{xltabular}
 \endgroup
@@ -268,10 +268,10 @@ P{0.13\textwidth}
 \endhead
 \bottomrule
 \endfoot
-A-01 & 编译错误代码 & 错误原因解释、可能出错位置、修正方向提示 & 反馈是否指出语法问题且不过度直接代写 & 已指出 \texttt{twoSum} 尚未实现完整逻辑，并明确提示第 10 行缺少分号导致编译失败 & 可用，能够较准确解释语法层面的错误来源 \\
-A-02 & 答案错误代码 & 逻辑问题提示、边界条件提醒、思路偏差分析 & 反馈是否能够指出导致 WA 的主要原因 & 已指出程序始终返回 \texttt{[0,0]}，与输入无关，因而在逻辑上根本不正确 & 可用，见图~\ref{fig:ch6-ai-wa}，可用于展示逻辑错误解释能力 \\
-A-03 & 低效正确代码 & 时间复杂度、空间复杂度、优化方向 & 反馈是否能够识别复杂度并给出合理优化方向 & 已识别时间复杂度为 \(O(N^2)\)、空间复杂度为 \(O(1)\)，并给出使用哈希表优化到线性时间的方向 & 可用，见图~\ref{fig:ch5-ai-feedback}，适合体现 AI 的学习支持价值 \\
-A-04 & 可读性较差代码 & 命名、结构、可读性与代码风格改进点 & 反馈是否能够从结构化角度提出改进意见 & 已指出单行过密、单字母变量、缺少空格和命名不清等问题，并给出代码风格 30 分、可读性 35 分的评价 & 可用，见图~\ref{fig:ch6-ai-readability}，可用于展示 AI 对代码可读性问题的识别能力 \\
+A-01 & 编译错误代码 & 原因/位置/修改提示 & 指语法问题、少代写 & 指出缺分号等 & 可用 \\
+A-02 & 答案错误代码 & 逻辑/边界提示 & 解释 WA 主因 & 指出恒返 \texttt{[0,0]} & 可用；图~\ref{fig:ch6-ai-wa} \\
+A-03 & 低效正确代码 & 复杂度与优化方向 & 复杂度合理 & \(O(N^2)\)/\(O(1)\)，建议哈希 & 可用；图~\ref{fig:ch5-ai-feedback} \\
+A-04 & 可读性较差代码 & 命名/结构/风格 & 结构化意见 & 风格约 30、可读约 35 & 可用；图~\ref{fig:ch6-ai-readability} \\
 \bottomrule
 \end{xltabular}
 \endgroup
@@ -318,12 +318,12 @@ P{0.12\textwidth}
 \endhead
 \bottomrule
 \endfoot
-I-01 & 响应式布局 & 通过 & 在移动端宽度下首页与题目工作区仍可保持主要内容可读，题面与编辑区主通路未失效。 & 图~\ref{fig:mobile-workspace} \\
-I-02 & 多语言切换 & 通过 & 页面语言切换后，界面文案与题面文本可同步切换并保持同一语种上下文。 & 图~\ref{fig:lang-switch} \\
-I-03 & 深浅色主题 & 通过 & 切到深色主题后，页面容器、工作区和代码区域的配色能对齐，视觉上没有突兀跳变。 & 图~\ref{fig:dark-theme-workspace} \\
-I-04 & 编辑器 AI 工具栏 & 通过 & 优化代码后可切换到 Diff 视图观察前后改动，原代码未被静默覆盖。 & 图~\ref{fig:diff-view} \\
-I-05 & 机器人问答面板 & 通过 & AI 助手能够结合当前代码回答复杂度问题，回答内容与当前任务上下文一致。 & 图~\ref{fig:ai-chat-panel} \\
-I-06 & 语言服务 LSP 体验 & 通过 & 工具栏可观察连接状态，在 Clangd 就绪条件下，故意错误可触发编辑器诊断标记，减少仅依赖提交后 \texttt{CE} 信息的定位成本。 & 图~\ref{fig:ch6-lsp} \\
+I-01 & 响应式布局 & 通过 & 窄屏主流程可读 & 图~\ref{fig:mobile-workspace} \\
+I-02 & 多语言切换 & 通过 & 界面与题面语种一致 & 图~\ref{fig:lang-switch} \\
+I-03 & 深浅色主题 & 通过 & 页/工作区/代码区配色一致 & 图~\ref{fig:dark-theme-workspace} \\
+I-04 & 编辑器 AI 工具栏 & 通过 & Diff 可看改动，未静默覆盖 & 图~\ref{fig:diff-view} \\
+I-05 & 机器人问答面板 & 通过 & 回答绑定当前代码上下文 & 图~\ref{fig:ai-chat-panel} \\
+I-06 & 语言服务 LSP 体验 & 通过 & 连接态可见；错误可出诊断 & 图~\ref{fig:ch6-lsp} \\
 \bottomrule
 \end{xltabular}
 \endgroup
